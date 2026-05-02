@@ -1,0 +1,69 @@
+Project Name: Swift Tow – A Triple-Platform Tow Truck On-Demand System
+
+Objective:
+Build a full-stack on-demand tow truck service including:
+
+Node.js Backend: Using Socket.io for real-time coordination between Users, Drivers, and Admin.
+
+User Mobile App (React Native/Expo): For customers to request tows, manage profiles, and pay.
+
+Driver Mobile App (React Native/Expo): For drivers to accept jobs, navigate, and contact users.
+
+Admin Dashboard (React): For central monitoring with a QR code system for app downloads.
+
+Core Features to Implement:
+1. Authentication & Profile (User App):
+
+Build a login/signup flow with input validation (Email, Password, Name).
+
+Implement an Edit Profile screen where users can upload a profile picture and add their Ghana phone number (+233).
+
+Include a Personal QR Code popup generated from the User ID for driver verification.
+
+2. Tow Request Logic (User App):
+
+Use a MapView (Accra/Mampong focus) with a selection for Flatbed, Hook & Chain, or Repair Towing.
+
+The "Confirm Request" button must trigger a "Searching for Driver" overlay and emit a socket event containing the user’s name, real phone number, and GPS coordinates.
+
+3. Driver Logistics (Driver App):
+
+Include a "Go Offline/Online" toggle that hides/shows the bottom dashboard.
+
+Provide a "Call User" button using the phone number passed through the socket request.
+
+Include an Emergency SOS button that sends the driver's live GPS coordinates via SMS.
+
+4. Admin & Monitoring (Admin Dashboard):
+
+A React-based web dashboard showing real-time stats: Online Drivers, Active Jobs, and Total Earnings.
+
+Display a permanent QR code on the dashboard that links to the Expo Go project URL.
+
+5. Payment & History (User App):
+
+A Trips Made screen showing past locations, vehicle details (e.g., Toyota Camry - GT 442-22), and GHS amounts.
+
+A Payment Modal at the end of a trip allowing the user to select between Mobile Money (MTN/Telecel/AT) or Cash.
+
+6. Support:
+
+A Help & Support screen with direct "Call" and "WhatsApp" links for emergency assistance.
+
+Technical Stack:
+
+Frontend: React Native (Expo) and React (Web).
+
+Backend: Node.js with Express and Socket.io.
+
+Icons: MaterialCommunityIcons (@expo/vector-icons).
+
+State Management: React Hooks (useState, useEffect).
+
+Style Guide:
+
+Primary Color: #FF6B00 (Swift Tow Orange).
+
+Secondary Colors: #34495E (Dark Blue/Gray) and #FFFFFF (White).
+
+UI Style: Clean, iOS-inspired card layouts with bold headers.

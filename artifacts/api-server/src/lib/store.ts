@@ -1,0 +1,249 @@
+import { randomUUID } from "crypto";
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  phone: string;
+  role: "user" | "driver" | "admin";
+  avatarUrl: string | null;
+  createdAt: string;
+}
+
+export interface Driver {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  isOnline: boolean;
+  currentLocation: { latitude: number; longitude: number } | null;
+  avatarUrl: string | null;
+  rating: number;
+  totalTrips: number;
+  activeJobId: string | null;
+}
+
+export interface TowRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  userPhone: string;
+  towType: "flatbed" | "hook_chain" | "repair";
+  status: "pending" | "accepted" | "in_progress" | "completed" | "cancelled";
+  pickupLocation: { latitude: number; longitude: number };
+  pickupAddress: string;
+  dropoffAddress: string | null;
+  vehicleDetails: string;
+  driverId: string | null;
+  estimatedArrival: number | null;
+  amount: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Trip {
+  id: string;
+  towRequestId: string;
+  userId: string;
+  driverId: string;
+  driverName: string;
+  pickupAddress: string;
+  dropoffAddress: string | null;
+  vehicleDetails: string;
+  towType: "flatbed" | "hook_chain" | "repair";
+  amount: number;
+  paymentMethod: "mtn_momo" | "telecel_cash" | "at_money" | "cash" | null;
+  paymentStatus: "pending" | "paid";
+  completedAt: string;
+}
+
+const users = new Map<string, User>();
+const drivers = new Map<string, Driver>();
+const towRequests = new Map<string, TowRequest>();
+const trips = new Map<string, Trip>();
+let totalEarnings = 0;
+
+function seedData() {
+  const now = new Date().toISOString();
+
+  const driver1Id = randomUUID();
+  drivers.set(driver1Id, {
+    id: driver1Id,
+    name: "Kwame Asante",
+    email: "kwame@swifttow.com",
+    phone: "+233244567890",
+    isOnline: true,
+    currentLocation: { latitude: 5.614818, longitude: -0.205874 },
+    avatarUrl: null,
+    rating: 4.8,
+    totalTrips: 142,
+    activeJobId: null,
+  });
+
+  const driver2Id = randomUUID();
+  drivers.set(driver2Id, {
+    id: driver2Id,
+    name: "Kofi Mensah",
+    email: "kofi@swifttow.com",
+    phone: "+233245678901",
+    isOnline: true,
+    currentLocation: { latitude: 5.603717, longitude: -0.186964 },
+    avatarUrl: null,
+    rating: 4.6,
+    totalTrips: 89,
+    activeJobId: null,
+  });
+
+  const driver3Id = randomUUID();
+  drivers.set(driver3Id, {
+    id: driver3Id,
+    name: "Ama Owusu",
+    email: "ama@swifttow.com",
+    phone: "+233246789012",
+    isOnline: false,
+    currentLocation: null,
+    avatarUrl: null,
+    rating: 4.9,
+    totalTrips: 210,
+    activeJobId: null,
+  });
+
+  const userId = randomUUID();
+  users.set(userId, {
+    id: userId,
+    name: "John Doe",
+    email: "john@example.com",
+    password: "password123",
+    phone: "+233201234567",
+    role: "user",
+    avatarUrl: null,
+    createdAt: now,
+  });
+
+  const trip1Id = randomUUID();
+  trips.set(trip1Id, {
+    id: trip1Id,
+    towRequestId: randomUUID(),
+    userId,
+    driverId: driver1Id,
+    driverName: "Kwame Asante",
+    pickupAddress: "Accra Mall, Spintex Road",
+    dropoffAddress: "Tema Community 7",
+    vehicleDetails: "Toyota Camry - GT 442-22",
+    towType: "flatbed",
+    amount: 250,
+    paymentMethod: "mtn_momo",
+    paymentStatus: "paid",
+    completedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+
+  const trip2Id = randomUUID();
+  trips.set(trip2Id, {
+    id: trip2Id,
+    towRequestId: randomUUID(),
+    userId,
+    driverId: driver2Id,
+    driverName: "Kofi Mensah",
+    pickupAddress: "Kotoka International Airport",
+    dropoffAddress: "East Legon",
+    vehicleDetails: "Honda Accord - GW 234-20",
+    towType: "hook_chain",
+    amount: 180,
+    paymentMethod: "cash",
+    paymentStatus: "paid",
+    completedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+
+  totalEarnings = 430;
+}
+
+seedData();
+
+export const store = {
+  users,
+  drivers,
+  towRequests,
+  trips,
+
+  createUser(data: Omit<User, "id" | "createdAt">): User {
+    const id = randomUUID();
+    const user: User = { ...data, id, createdAt: new Date().toISOString() };
+    users.set(id, user);
+    return user;
+  },
+
+  getUserByEmail(email: string): User | undefined {
+    return Array.from(users.values()).find((u) => u.email === email);
+  },
+
+  getUserById(id: string): User | undefined {
+    return users.get(id);
+  },
+
+  updateUser(id: string, data: Partial<User>): User | null {
+    const user = users.get(id);
+    if (!user) return null;
+    const updated = { ...user, ...data };
+    users.set(id, updated);
+    return updated;
+  },
+
+  createTowRequest(data: Omit<TowRequest, "id" | "createdAt" | "updatedAt">): TowRequest {
+    const id = randomUUID();
+    const now = new Date().toISOString();
+    const req: TowRequest = { ...data, id, createdAt: now, updatedAt: now };
+    towRequests.set(id, req);
+    return req;
+  },
+
+  updateTowRequest(id: string, data: Partial<TowRequest>): TowRequest | null {
+    const req = towRequests.get(id);
+    if (!req) return null;
+    const updated = { ...req, ...data, updatedAt: new Date().toISOString() };
+    towRequests.set(id, updated);
+    return updated;
+  },
+
+  createTrip(data: Omit<Trip, "id">): Trip {
+    const id = randomUUID();
+    const trip: Trip = { ...data, id };
+    trips.set(id, trip);
+    totalEarnings += data.amount;
+    return trip;
+  },
+
+  getTotalEarnings(): number {
+    return totalEarnings;
+  },
+
+  markPaymentPaid(tripId: string, method: Trip["paymentMethod"]): Trip | null {
+    const trip = trips.get(tripId);
+    if (!trip) return null;
+    const updated = { ...trip, paymentStatus: "paid" as const, paymentMethod: method };
+    trips.set(tripId, updated);
+    return updated;
+  },
+
+  getStats() {
+    const onlineDrivers = Array.from(drivers.values()).filter((d) => d.isOnline).length;
+    const activeJobs = Array.from(towRequests.values()).filter(
+      (r) => r.status === "accepted" || r.status === "in_progress"
+    ).length;
+    const pendingRequests = Array.from(towRequests.values()).filter(
+      (r) => r.status === "pending"
+    ).length;
+    const recentRequests = Array.from(towRequests.values())
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5);
+
+    return {
+      onlineDrivers,
+      activeJobs,
+      totalEarnings,
+      totalTrips: trips.size,
+      pendingRequests,
+      recentRequests,
+    };
+  },
+};

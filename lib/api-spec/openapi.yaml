@@ -3,20 +3,32 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Swift Tow API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication and profile management
+  - name: tow-requests
+    description: Tow request operations
+  - name: drivers
+    description: Driver management
+  - name: trips
+    description: Trip history
+  - name: payments
+    description: Payment processing
+  - name: stats
+    description: Admin dashboard statistics
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +36,298 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: loginUser
+      tags: [auth]
+      summary: Login a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/profile:
+    get:
+      operationId: getProfile
+      tags: [auth]
+      summary: Get current user profile
+      parameters:
+        - in: query
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    put:
+      operationId: updateProfile
+      tags: [auth]
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /tow-requests:
+    post:
+      operationId: createTowRequest
+      tags: [tow-requests]
+      summary: Create a new tow request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewTowRequest"
+      responses:
+        "201":
+          description: Tow request created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TowRequest"
+    get:
+      operationId: listTowRequests
+      tags: [tow-requests]
+      summary: List tow requests
+      parameters:
+        - in: query
+          name: userId
+          schema:
+            type: string
+        - in: query
+          name: driverId
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, accepted, in_progress, completed, cancelled]
+      responses:
+        "200":
+          description: List of tow requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TowRequest"
+
+  /tow-requests/{id}:
+    get:
+      operationId: getTowRequest
+      tags: [tow-requests]
+      summary: Get a tow request by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tow request details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TowRequest"
+    patch:
+      operationId: updateTowRequest
+      tags: [tow-requests]
+      summary: Update a tow request status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TowRequestUpdate"
+      responses:
+        "200":
+          description: Updated tow request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TowRequest"
+
+  /drivers:
+    get:
+      operationId: listDrivers
+      tags: [drivers]
+      summary: List all drivers
+      parameters:
+        - in: query
+          name: online
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of drivers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Driver"
+
+  /drivers/{id}:
+    get:
+      operationId: getDriver
+      tags: [drivers]
+      summary: Get a driver by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Driver details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Driver"
+
+  /drivers/{id}/status:
+    patch:
+      operationId: updateDriverStatus
+      tags: [drivers]
+      summary: Update driver online/offline status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DriverStatusUpdate"
+      responses:
+        "200":
+          description: Driver status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Driver"
+
+  /trips:
+    get:
+      operationId: listTrips
+      tags: [trips]
+      summary: List trip history for a user
+      parameters:
+        - in: query
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of completed trips
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Trip"
+
+  /payments:
+    post:
+      operationId: processPayment
+      tags: [payments]
+      summary: Process payment for a trip
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProcessPaymentRequest"
+      responses:
+        "200":
+          description: Payment processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResult"
+
+  /stats:
+    get:
+      operationId: getDashboardStats
+      tags: [stats]
+      summary: Get admin dashboard statistics
+      responses:
+        "200":
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +338,369 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+        - message
+
+    RegisterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+        phone:
+          type: string
+          description: Ghana phone number starting with +233
+        role:
+          type: string
+          enum: [user, driver]
+          default: user
+      required:
+        - name
+        - email
+        - password
+        - phone
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        role:
+          type: string
+          enum: [user, driver]
+          default: user
+      required:
+        - email
+        - password
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+      required:
+        - token
+        - user
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [user, driver, admin]
+        avatarUrl:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - email
+        - phone
+        - role
+        - createdAt
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+      required:
+        - userId
+
+    Coordinates:
+      type: object
+      properties:
+        latitude:
+          type: number
+        longitude:
+          type: number
+      required:
+        - latitude
+        - longitude
+
+    NewTowRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+        userName:
+          type: string
+        userPhone:
+          type: string
+        towType:
+          type: string
+          enum: [flatbed, hook_chain, repair]
+        pickupLocation:
+          $ref: "#/components/schemas/Coordinates"
+        pickupAddress:
+          type: string
+        dropoffAddress:
+          type: string
+          nullable: true
+        vehicleDetails:
+          type: string
+          description: e.g. Toyota Camry - GT 442-22
+      required:
+        - userId
+        - userName
+        - userPhone
+        - towType
+        - pickupLocation
+        - pickupAddress
+        - vehicleDetails
+
+    TowRequestUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, accepted, in_progress, completed, cancelled]
+        driverId:
+          type: string
+          nullable: true
+        driverLocation:
+          $ref: "#/components/schemas/Coordinates"
+        estimatedArrival:
+          type: integer
+          description: Estimated arrival in minutes
+      required:
+        - status
+
+    TowRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        userName:
+          type: string
+        userPhone:
+          type: string
+        towType:
+          type: string
+          enum: [flatbed, hook_chain, repair]
+        status:
+          type: string
+          enum: [pending, accepted, in_progress, completed, cancelled]
+        pickupLocation:
+          $ref: "#/components/schemas/Coordinates"
+        pickupAddress:
+          type: string
+        dropoffAddress:
+          type: string
+          nullable: true
+        vehicleDetails:
+          type: string
+        driverId:
+          type: string
+          nullable: true
+        estimatedArrival:
+          type: integer
+          nullable: true
+        amount:
+          type: number
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - userName
+        - userPhone
+        - towType
+        - status
+        - pickupLocation
+        - pickupAddress
+        - vehicleDetails
+        - createdAt
+        - updatedAt
+
+    Driver:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        isOnline:
+          type: boolean
+        currentLocation:
+          $ref: "#/components/schemas/Coordinates"
+        avatarUrl:
+          type: string
+          nullable: true
+        rating:
+          type: number
+        totalTrips:
+          type: integer
+        activeJobId:
+          type: string
+          nullable: true
+      required:
+        - id
+        - name
+        - email
+        - phone
+        - isOnline
+        - rating
+        - totalTrips
+
+    DriverStatusUpdate:
+      type: object
+      properties:
+        isOnline:
+          type: boolean
+        currentLocation:
+          $ref: "#/components/schemas/Coordinates"
+      required:
+        - isOnline
+
+    Trip:
+      type: object
+      properties:
+        id:
+          type: string
+        towRequestId:
+          type: string
+        userId:
+          type: string
+        driverId:
+          type: string
+        driverName:
+          type: string
+        pickupAddress:
+          type: string
+        dropoffAddress:
+          type: string
+          nullable: true
+        vehicleDetails:
+          type: string
+        towType:
+          type: string
+          enum: [flatbed, hook_chain, repair]
+        amount:
+          type: number
+        paymentMethod:
+          type: string
+          enum: [mtn_momo, telecel_cash, at_money, cash]
+          nullable: true
+        paymentStatus:
+          type: string
+          enum: [pending, paid]
+        completedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - towRequestId
+        - userId
+        - driverId
+        - driverName
+        - pickupAddress
+        - vehicleDetails
+        - towType
+        - amount
+        - paymentStatus
+        - completedAt
+
+    ProcessPaymentRequest:
+      type: object
+      properties:
+        tripId:
+          type: string
+        amount:
+          type: number
+        method:
+          type: string
+          enum: [mtn_momo, telecel_cash, at_money, cash]
+        phoneNumber:
+          type: string
+          nullable: true
+      required:
+        - tripId
+        - amount
+        - method
+
+    PaymentResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        transactionId:
+          type: string
+          nullable: true
+        message:
+          type: string
+      required:
+        - success
+        - message
+
+    DashboardStats:
+      type: object
+      properties:
+        onlineDrivers:
+          type: integer
+        activeJobs:
+          type: integer
+        totalEarnings:
+          type: number
+        totalTrips:
+          type: integer
+        pendingRequests:
+          type: integer
+        recentRequests:
+          type: array
+          items:
+            $ref: "#/components/schemas/TowRequest"
+      required:
+        - onlineDrivers
+        - activeJobs
+        - totalEarnings
+        - totalTrips
+        - pendingRequests
+        - recentRequests
