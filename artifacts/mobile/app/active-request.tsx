@@ -68,6 +68,16 @@ export default function ActiveRequestScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 24) }} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
+          {/* Back button */}
+          <Pressable
+            style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
+            onPress={() => router.back()}
+            hitSlop={12}
+          >
+            <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
+            <Text style={styles.backBtnText}>Back</Text>
+          </Pressable>
+
           <Animated.View style={[styles.pulseCircle, { transform: [{ scale: pulseAnim }] }]}>
             <MaterialCommunityIcons name="truck-fast" size={40} color="#FFFFFF" />
           </Animated.View>
@@ -155,7 +165,20 @@ export default function ActiveRequestScreen() {
 function makeStyles(colors: ReturnType<typeof useColors>) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    header: { alignItems: "center", padding: 32, backgroundColor: colors.secondary },
+    header: { alignItems: "center", padding: 32, paddingTop: 20, backgroundColor: colors.secondary },
+    backBtn: {
+      position: "absolute",
+      top: 16,
+      left: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 2,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      borderRadius: 20,
+      backgroundColor: "rgba(255,255,255,0.15)",
+    },
+    backBtnText: { fontSize: 14, fontWeight: "600" as const, color: "#FFFFFF" },
     pulseCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", marginBottom: 16 },
     statusTitle: { fontSize: 24, fontWeight: "700" as const, color: "#FFFFFF", marginBottom: 8 },
     etaText: { fontSize: 15, color: "rgba(255,255,255,0.7)" },
