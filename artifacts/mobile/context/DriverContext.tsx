@@ -68,6 +68,13 @@ export function DriverProvider({
   const socketRef = useRef<Socket | null>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
 
+  // Refs so socket callbacks always read the latest values (avoid stale closures)
+  const isOnlineRef = useRef(false);
+  const tripStatusRef = useRef<TripStatus>("idle");
+
+  useEffect(() => { isOnlineRef.current = isOnline; }, [isOnline]);
+  useEffect(() => { tripStatusRef.current = tripStatus; }, [tripStatus]);
+
   useEffect(() => {
     if (!driverId) return;
 
@@ -82,7 +89,8 @@ export function DriverProvider({
     });
 
     socket.on("request:incoming", (req: any) => {
-      if (tripStatus === "idle" && isOnline) {
+      // Use refs so we always see the current online/trip state, not stale closure values
+      if (tripStatusRef.current === "idle" && isOnlineRef.current) {
         setIncomingRequest({
           id: req.id,
           userId: req.userId,
