@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import React, { useEffect, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -9,185 +10,186 @@ interface Props {
 }
 
 const ACCRA = { lat: 5.6037, lng: -0.187 };
+const GMAPS_KEY = (Constants.expoConfig?.extra?.googleMapsKey as string | undefined) ?? "";
 
-function loadLeaflet(): Promise<any> {
+function loadGoogleMaps(): Promise<typeof google.maps> {
   return new Promise((resolve) => {
     const w = window as any;
-    if (w.L) { resolve(w.L); return; }
-
-    if (!document.getElementById("leaflet-css")) {
-      const link = document.createElement("link");
-      link.id = "leaflet-css";
-      link.rel = "stylesheet";
-      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-      document.head.appendChild(link);
-    }
-
-    if (!document.getElementById("leaflet-js")) {
-      const script = document.createElement("script");
-      script.id = "leaflet-js";
-      script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-      script.onload = () => resolve(w.L);
-      document.head.appendChild(script);
-    } else {
+    if (w.google?.maps) { resolve(w.google.maps); return; }
+    if (document.getElementById("gmaps-js")) {
       const interval = setInterval(() => {
-        if (w.L) { clearInterval(interval); resolve(w.L); }
+        if (w.google?.maps) { clearInterval(interval); resolve(w.google.maps); }
       }, 50);
+      return;
     }
+    (w as any).__gmapsResolve = () => resolve(w.google.maps);
+    const script = document.createElement("script");
+    script.id = "gmaps-js";
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&loading=async&callback=__gmapsResolve`;
+    script.async = true;
+    document.head.appendChild(script);
   });
 }
 
 export default function DriverMapComponent({ driverLocation, requestLocation, colors }: Props) {
   const divRef = useRef<HTMLDivElement | null>(null);
-  const mapRef2 = useRef<any>(null);
-  const driverMarkerRef = useRef<any>(null);
-  const pickupMarkerRef = useRef<any>(null);
-  const routeLineRef = useRef<any>(null);
+  const mapRef2 = useRef<google.maps.Map | null>(null);
+  const driverMarkerRef = useRef<google.maps.Marker | null>(null);
+  const pickupMarkerRef = useRef<google.maps.Marker | null>(null);
+  const routeLineRef = useRef<google.maps.Polyline | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     (async () => {
-      const L = await loadLeaflet();
+      const maps = await loadGoogleMaps();
       if (cancelled || !divRef.current || mapRef2.current) return;
 
       const lat = driverLocation?.latitude ?? ACCRA.lat;
       const lng = driverLocation?.longitude ?? ACCRA.lng;
 
-      const map = L.map(divRef.current, {
-        center: [lat, lng],
+      const map = new maps.Map(divRef.current, {
+        center: { lat, lng },
         zoom: 14,
+        disableDefaultUI: false,
         zoomControl: true,
-        attributionControl: true,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        styles: [
+          { featureType: "poi", stylers: [{ visibility: "off" }] },
+          { featureType: "transit", stylers: [{ visibility: "simplified" }] },
+        ],
       });
-
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-        maxZoom: 19,
-      }).addTo(map);
-
-      // Driver truck marker
-      const truckIcon = L.divIcon({
-        html: `<div style="width:48px;height:48px;border-radius:50%;background:${colors.secondary};border:3px solid white;box-shadow:0 3px 10px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center">
-                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
-                   <path d="M20 8h-3L15 4H5c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h4c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM8 18c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm9 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-7V9.5h2.5l1.96 2.5H16z"/>
-                 </svg>
-               </div>`,
-        className: "",
-        iconSize: [48, 48],
-        iconAnchor: [24, 24],
-      });
-
-      if (driverLocation) {
-        driverMarkerRef.current = L.marker([lat, lng], { icon: truckIcon }).addTo(map);
-      }
-
       mapRef2.current = map;
 
-      // Trigger request marker if already set
+      if (driverLocation) {
+        driverMarkerRef.current = new maps.Marker({
+          map,
+          position: { lat, lng },
+          icon: makeTruckIcon(maps, colors.secondary),
+          title: "You",
+        });
+      }
+
       if (requestLocation) {
-        updatePickup(L, map, requestLocation, driverLocation);
+        updatePickup(maps, map, requestLocation, driverLocation);
       }
     })();
 
     return () => { cancelled = true; };
   }, []);
 
+  function makeTruckIcon(maps: typeof google.maps, bg: string) {
+    return {
+      url: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'><circle cx='24' cy='24' r='24' fill='${encodeURIComponent(bg)}'/><path d='M34 18h-5l-2-6H13c-1.66 0-3 1.34-3 3v13h3c0 2.48 2.02 4.5 4.5 4.5S22 30.48 22 28h6c0 2.48 2.02 4.5 4.5 4.5S37 30.48 37 28h3v-6l-4-4h-2zm-15.5 12c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm14 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM33 23v-3.5h3.5l2.46 3.5H33z' fill='white'/></svg>`,
+      scaledSize: new maps.Size(48, 48),
+      anchor: new maps.Point(24, 24),
+    };
+  }
+
   function updatePickup(
-    L: any, map: any,
+    maps: typeof google.maps,
+    map: google.maps.Map,
     req: { latitude: number; longitude: number },
     drv: { latitude: number; longitude: number } | null
   ) {
-    const pickupIcon = L.divIcon({
-      html: `<div style="display:flex;flex-direction:column;align-items:center">
-               <div style="width:14px;height:14px;border-radius:50%;background:${colors.primary};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>
-               <div style="width:2px;height:10px;background:${colors.primary}"></div>
-             </div>`,
-      className: "",
-      iconSize: [14, 24],
-      iconAnchor: [7, 24],
-    });
+    const reqPos = { lat: req.latitude, lng: req.longitude };
 
     if (pickupMarkerRef.current) {
-      pickupMarkerRef.current.setLatLng([req.latitude, req.longitude]);
+      pickupMarkerRef.current.setPosition(reqPos);
     } else {
-      pickupMarkerRef.current = L.marker([req.latitude, req.longitude], { icon: pickupIcon }).addTo(map);
+      pickupMarkerRef.current = new maps.Marker({
+        map,
+        position: reqPos,
+        icon: {
+          url: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='40' viewBox='0 0 32 40'><path d='M16 0C7.16 0 0 7.16 0 16c0 11 16 24 16 24S32 27 32 16C32 7.16 24.84 0 16 0z' fill='${encodeURIComponent(colors.primary)}'/><circle cx='16' cy='16' r='7' fill='white'/></svg>`,
+          scaledSize: new maps.Size(32, 40),
+          anchor: new maps.Point(16, 40),
+        },
+        title: "Pickup",
+      });
     }
 
-    // Dashed route line
     if (drv) {
-      if (routeLineRef.current) {
-        map.removeLayer(routeLineRef.current);
-      }
-      routeLineRef.current = L.polyline(
-        [[drv.latitude, drv.longitude], [req.latitude, req.longitude]],
-        { color: colors.primary, weight: 3, dashArray: "8 6", opacity: 0.7 }
-      ).addTo(map);
+      const drvPos = { lat: drv.latitude, lng: drv.longitude };
+      routeLineRef.current?.setMap(null);
+      routeLineRef.current = new maps.Polyline({
+        map,
+        path: [drvPos, reqPos],
+        strokeColor: colors.primary,
+        strokeOpacity: 0,
+        icons: [{
+          icon: { path: "M 0,-1 0,1", strokeOpacity: 0.8, scale: 3 },
+          offset: "0",
+          repeat: "16px",
+        }],
+        strokeWeight: 3,
+      });
 
-      const bounds = L.latLngBounds([
-        [drv.latitude, drv.longitude],
-        [req.latitude, req.longitude],
-      ]);
-      map.fitBounds(bounds, { padding: [80, 80], animate: true });
+      const bounds = new maps.LatLngBounds();
+      bounds.extend(drvPos);
+      bounds.extend(reqPos);
+      map.fitBounds(bounds, 80);
     } else {
-      map.panTo([req.latitude, req.longitude], { animate: true });
+      map.panTo(reqPos);
     }
   }
 
-  // Driver location updates
   useEffect(() => {
-    const L = (window as any).L;
+    const maps = (window as any).google?.maps as typeof google.maps | undefined;
     const map = mapRef2.current;
-    if (!L || !map || !driverLocation) return;
+    if (!maps || !map || !driverLocation) return;
 
+    const pos = { lat: driverLocation.latitude, lng: driverLocation.longitude };
     if (driverMarkerRef.current) {
-      driverMarkerRef.current.setLatLng([driverLocation.latitude, driverLocation.longitude]);
+      driverMarkerRef.current.setPosition(pos);
     } else {
-      const truckIcon = L.divIcon({
-        html: `<div style="width:48px;height:48px;border-radius:50%;background:${colors.secondary};border:3px solid white;box-shadow:0 3px 10px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center">
-                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
-                   <path d="M20 8h-3L15 4H5c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h4c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM8 18c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-7V9.5h2.5l1.96 2.5H16z"/>
-                 </svg>
-               </div>`,
-        className: "",
-        iconSize: [48, 48],
-        iconAnchor: [24, 24],
+      driverMarkerRef.current = new maps.Marker({
+        map,
+        position: pos,
+        icon: makeTruckIcon(maps, colors.secondary),
+        title: "You",
       });
-      driverMarkerRef.current = L.marker([driverLocation.latitude, driverLocation.longitude], { icon: truckIcon }).addTo(map);
     }
 
     if (requestLocation) {
-      if (routeLineRef.current) map.removeLayer(routeLineRef.current);
-      routeLineRef.current = L.polyline(
-        [[driverLocation.latitude, driverLocation.longitude], [requestLocation.latitude, requestLocation.longitude]],
-        { color: colors.primary, weight: 3, dashArray: "8 6", opacity: 0.7 }
-      ).addTo(map);
+      routeLineRef.current?.setMap(null);
+      routeLineRef.current = new maps.Polyline({
+        map,
+        path: [pos, { lat: requestLocation.latitude, lng: requestLocation.longitude }],
+        strokeColor: colors.primary,
+        strokeOpacity: 0,
+        icons: [{
+          icon: { path: "M 0,-1 0,1", strokeOpacity: 0.8, scale: 3 },
+          offset: "0",
+          repeat: "16px",
+        }],
+        strokeWeight: 3,
+      });
     } else {
-      map.panTo([driverLocation.latitude, driverLocation.longitude], { animate: true });
+      map.panTo(pos);
     }
   }, [driverLocation]);
 
-  // Request location updates
   useEffect(() => {
-    const L = (window as any).L;
+    const maps = (window as any).google?.maps as typeof google.maps | undefined;
     const map = mapRef2.current;
-    if (!L || !map) return;
+    if (!maps || !map) return;
 
     if (requestLocation) {
-      updatePickup(L, map, requestLocation, driverLocation);
+      updatePickup(maps, map, requestLocation, driverLocation);
     } else if (pickupMarkerRef.current) {
-      map.removeLayer(pickupMarkerRef.current);
+      pickupMarkerRef.current.setMap(null);
       pickupMarkerRef.current = null;
-      if (routeLineRef.current) { map.removeLayer(routeLineRef.current); routeLineRef.current = null; }
+      routeLineRef.current?.setMap(null);
+      routeLineRef.current = null;
     }
   }, [requestLocation]);
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      <div
-        ref={divRef}
-        style={{ position: "absolute", inset: 0, zIndex: 0 }}
-      />
+      <div ref={divRef} style={{ position: "absolute", inset: 0 }} />
     </View>
   );
 }
