@@ -1,6 +1,6 @@
-import Constants from "expo-constants";
-import React, { useEffect, useRef } from "react";
-import { StyleSheet, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
+import { loadGoogleMaps } from "@/lib/googleMapsLoader";
 
 interface Props {
   driverLocation: { latitude: number; longitude: number } | null;
@@ -10,26 +10,6 @@ interface Props {
 }
 
 const ACCRA = { lat: 5.6037, lng: -0.187 };
-const GMAPS_KEY = (Constants.expoConfig?.extra?.googleMapsKey as string | undefined) ?? "";
-
-function loadGoogleMaps(): Promise<typeof google.maps> {
-  return new Promise((resolve) => {
-    const w = window as any;
-    if (w.google?.maps) { resolve(w.google.maps); return; }
-    if (document.getElementById("gmaps-js")) {
-      const interval = setInterval(() => {
-        if (w.google?.maps) { clearInterval(interval); resolve(w.google.maps); }
-      }, 50);
-      return;
-    }
-    (w as any).__gmapsResolve = () => resolve(w.google.maps);
-    const script = document.createElement("script");
-    script.id = "gmaps-js";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&loading=async&callback=__gmapsResolve`;
-    script.async = true;
-    document.head.appendChild(script);
-  });
-}
 
 export default function DriverMapComponent({ driverLocation, requestLocation, colors }: Props) {
   const divRef = useRef<HTMLDivElement | null>(null);
@@ -37,45 +17,48 @@ export default function DriverMapComponent({ driverLocation, requestLocation, co
   const driverMarkerRef = useRef<google.maps.Marker | null>(null);
   const pickupMarkerRef = useRef<google.maps.Marker | null>(null);
   const routeLineRef = useRef<google.maps.Polyline | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    (async () => {
-      const maps = await loadGoogleMaps();
-      if (cancelled || !divRef.current || mapRef2.current) return;
+    loadGoogleMaps()
+      .then((maps) => {
+        if (cancelled || !divRef.current || mapRef2.current) return;
 
-      const lat = driverLocation?.latitude ?? ACCRA.lat;
-      const lng = driverLocation?.longitude ?? ACCRA.lng;
+        const lat = driverLocation?.latitude ?? ACCRA.lat;
+        const lng = driverLocation?.longitude ?? ACCRA.lng;
 
-      const map = new maps.Map(divRef.current, {
-        center: { lat, lng },
-        zoom: 14,
-        disableDefaultUI: false,
-        zoomControl: true,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        styles: [
-          { featureType: "poi", stylers: [{ visibility: "off" }] },
-          { featureType: "transit", stylers: [{ visibility: "simplified" }] },
-        ],
-      });
-      mapRef2.current = map;
-
-      if (driverLocation) {
-        driverMarkerRef.current = new maps.Marker({
-          map,
-          position: { lat, lng },
-          icon: makeTruckIcon(maps, colors.secondary),
-          title: "You",
+        const map = new maps.Map(divRef.current, {
+          center: { lat, lng },
+          zoom: 14,
+          zoomControl: true,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+          styles: [
+            { featureType: "poi", stylers: [{ visibility: "off" }] },
+            { featureType: "transit", stylers: [{ visibility: "simplified" }] },
+          ],
         });
-      }
+        mapRef2.current = map;
 
-      if (requestLocation) {
-        updatePickup(maps, map, requestLocation, driverLocation);
-      }
-    })();
+        if (driverLocation) {
+          driverMarkerRef.current = new maps.Marker({
+            map,
+            position: { lat, lng },
+            icon: makeTruckIcon(maps, colors.secondary),
+            title: "You",
+          });
+        }
+
+        if (requestLocation) {
+          updatePickup(maps, map, requestLocation, driverLocation);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setError(String(err.message));
+      });
 
     return () => { cancelled = true; };
   }, []);
@@ -187,9 +170,24 @@ export default function DriverMapComponent({ driverLocation, requestLocation, co
     }
   }, [requestLocation]);
 
+  if (error) {
+    return (
+      <View style={[StyleSheet.absoluteFill, styles.errorBox]}>
+        <Text style={styles.errorText}>Map unavailable</Text>
+        <Text style={styles.errorSub}>{error}</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={StyleSheet.absoluteFill}>
-      <div ref={divRef} style={{ position: "absolute", inset: 0 }} />
+      <div ref={divRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  errorBox: { backgroundColor: "#f0f0f0", alignItems: "center", justifyContent: "center", padding: 24 },
+  errorText: { fontSize: 16, fontWeight: "600", color: "#333", marginBottom: 4 },
+  errorSub: { fontSize: 12, color: "#666", textAlign: "center" },
+});

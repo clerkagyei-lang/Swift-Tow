@@ -1,6 +1,6 @@
-import Constants from "expo-constants";
-import React, { useEffect, useRef } from "react";
-import { StyleSheet, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
+import { loadGoogleMaps } from "@/lib/googleMapsLoader";
 
 interface Props {
   location: { latitude: number; longitude: number } | null;
@@ -11,26 +11,6 @@ interface Props {
 }
 
 const ACCRA = { lat: 5.6037, lng: -0.187 };
-const GMAPS_KEY = (Constants.expoConfig?.extra?.googleMapsKey as string | undefined) ?? "";
-
-function loadGoogleMaps(): Promise<typeof google.maps> {
-  return new Promise((resolve) => {
-    const w = window as any;
-    if (w.google?.maps) { resolve(w.google.maps); return; }
-    if (document.getElementById("gmaps-js")) {
-      const interval = setInterval(() => {
-        if (w.google?.maps) { clearInterval(interval); resolve(w.google.maps); }
-      }, 50);
-      return;
-    }
-    (w as any).__gmapsResolve = () => resolve(w.google.maps);
-    const script = document.createElement("script");
-    script.id = "gmaps-js";
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GMAPS_KEY}&loading=async&callback=__gmapsResolve`;
-    script.async = true;
-    document.head.appendChild(script);
-  });
-}
 
 export default function MapComponent({ location, driverLocation, colors }: Props) {
   const divRef = useRef<HTMLDivElement | null>(null);
@@ -38,61 +18,64 @@ export default function MapComponent({ location, driverLocation, colors }: Props
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
   const driverMarkerRef = useRef<google.maps.Marker | null>(null);
   const circleRef = useRef<google.maps.Circle | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    (async () => {
-      const maps = await loadGoogleMaps();
-      if (cancelled || !divRef.current || mapRef2.current) return;
+    loadGoogleMaps()
+      .then((maps) => {
+        if (cancelled || !divRef.current || mapRef2.current) return;
 
-      const lat = location?.latitude ?? ACCRA.lat;
-      const lng = location?.longitude ?? ACCRA.lng;
+        const lat = location?.latitude ?? ACCRA.lat;
+        const lng = location?.longitude ?? ACCRA.lng;
 
-      const map = new maps.Map(divRef.current, {
-        center: { lat, lng },
-        zoom: 15,
-        disableDefaultUI: false,
-        zoomControl: true,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        styles: [
-          { featureType: "poi", stylers: [{ visibility: "off" }] },
-          { featureType: "transit", stylers: [{ visibility: "simplified" }] },
-        ],
+        const map = new maps.Map(divRef.current, {
+          center: { lat, lng },
+          zoom: 15,
+          zoomControl: true,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+          styles: [
+            { featureType: "poi", stylers: [{ visibility: "off" }] },
+            { featureType: "transit", stylers: [{ visibility: "simplified" }] },
+          ],
+        });
+        mapRef2.current = map;
+
+        circleRef.current = new maps.Circle({
+          map,
+          center: { lat, lng },
+          radius: 80,
+          strokeColor: colors.primary,
+          strokeOpacity: 0.5,
+          strokeWeight: 2,
+          fillColor: colors.primary,
+          fillOpacity: 0.12,
+        });
+
+        userMarkerRef.current = new maps.Marker({
+          map,
+          position: { lat, lng },
+          icon: {
+            path: maps.SymbolPath.CIRCLE,
+            scale: 9,
+            fillColor: "#4A90E2",
+            fillOpacity: 1,
+            strokeColor: "#FFFFFF",
+            strokeWeight: 3,
+          },
+          title: "Your location",
+        });
+
+        if (driverLocation) {
+          placeDriverMarker(maps, map, driverLocation, { latitude: lat, longitude: lng });
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setError(String(err.message));
       });
-      mapRef2.current = map;
-
-      circleRef.current = new maps.Circle({
-        map,
-        center: { lat, lng },
-        radius: 80,
-        strokeColor: colors.primary,
-        strokeOpacity: 0.5,
-        strokeWeight: 2,
-        fillColor: colors.primary,
-        fillOpacity: 0.12,
-      });
-
-      userMarkerRef.current = new maps.Marker({
-        map,
-        position: { lat, lng },
-        icon: {
-          path: maps.SymbolPath.CIRCLE,
-          scale: 9,
-          fillColor: "#4A90E2",
-          fillOpacity: 1,
-          strokeColor: "#FFFFFF",
-          strokeWeight: 3,
-        },
-        title: "Your location",
-      });
-
-      if (driverLocation) {
-        placeDriverMarker(maps, map, driverLocation, { latitude: lat, longitude: lng });
-      }
-    })();
 
     return () => { cancelled = true; };
   }, []);
@@ -111,7 +94,7 @@ export default function MapComponent({ location, driverLocation, colors }: Props
         map,
         position: pos,
         icon: {
-          url: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'><circle cx='22' cy='22' r='22' fill='${encodeURIComponent(colors.secondary)}'/><path d='M32 16h-5L25 10H11c-1.66 0-3 1.34-3 3v13h3c0 2.48 2.02 4.5 4.5 4.5S20 28.48 20 26h6c0 2.48 2.02 4.5 4.5 4.5S35 28.48 35 26h3v-6l-4-4h-2zm-15.5 12c-.83 0-1.5-.67-1.5-1.5S15.67 25 16.5 25s1.5.67 1.5 1.5S17.33 28 16.5 28zm14 0c-.83 0-1.5-.67-1.5-1.5S29.67 25 30.5 25s1.5.67 1.5 1.5S31.33 28 30.5 28zm-1.5-8v-3.5h3.5l2.46 3.5H29z' fill='white'/></svg>`,
+          url: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'><circle cx='22' cy='22' r='22' fill='${encodeURIComponent(colors.secondary)}'/><path d='M32 16h-5L25 10H11c-1.66 0-3 1.34-3 3v13h3c0 2.48 2.02 4.5 4.5 4.5S20 28.48 20 26h6c0 2.48 2.02 4.5 4.5 4.5S35 28.48 35 26h3v-6l-4-4h-2zm-15.5 12c-.83 0-1.5-.67-1.5-1.5S15.67 25 16.5 25s1.5.67 1.5 1.5S17.33 28 16.5 28zm14 0c-.83 0-1.5-.67-1.5-1.5S29.67 25 30.5 25s1.5.67 1.5 1.5S31.33 28 30.5 28zm-1.5-8V9.5h2.5l1.96 2.5H29z' fill='white'/></svg>`,
           scaledSize: new maps.Size(44, 44),
           anchor: new maps.Point(22, 22),
         },
@@ -151,9 +134,24 @@ export default function MapComponent({ location, driverLocation, colors }: Props
     }
   }, [driverLocation]);
 
+  if (error) {
+    return (
+      <View style={[StyleSheet.absoluteFill, styles.errorBox]}>
+        <Text style={styles.errorText}>Map unavailable</Text>
+        <Text style={styles.errorSub}>{error}</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={StyleSheet.absoluteFill}>
-      <div ref={divRef} style={{ position: "absolute", inset: 0 }} />
+      <div ref={divRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  errorBox: { backgroundColor: "#f0f0f0", alignItems: "center", justifyContent: "center", padding: 24 },
+  errorText: { fontSize: 16, fontWeight: "600", color: "#333", marginBottom: 4 },
+  errorSub: { fontSize: 12, color: "#666", textAlign: "center" },
+});
