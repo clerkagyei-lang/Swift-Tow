@@ -18,8 +18,82 @@ export default function MapComponent({ location, driverLocation, colors }: Props
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
   const driverMarkerRef = useRef<google.maps.Marker | null>(null);
   const circleRef = useRef<google.maps.Circle | null>(null);
+  const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const directionsServiceRef = useRef<google.maps.DirectionsService | null>(null);
+  const routeKeyRef = useRef<string>("");
   const [error, setError] = useState<string | null>(null);
 
+  function makeDriverIcon(maps: typeof google.maps) {
+    return {
+      url: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'><circle cx='22' cy='22' r='22' fill='${encodeURIComponent(colors.secondary)}'/><path d='M32 16h-5L25 10H11c-1.66 0-3 1.34-3 3v13h3c0 2.48 2.02 4.5 4.5 4.5S20 28.48 20 26h6c0 2.48 2.02 4.5 4.5 4.5S35 28.48 35 26h3v-6l-4-4h-2zm-15.5 12c-.83 0-1.5-.67-1.5-1.5S15.67 25 16.5 25s1.5.67 1.5 1.5S17.33 28 16.5 28zm14 0c-.83 0-1.5-.67-1.5-1.5S29.67 25 30.5 25s1.5.67 1.5 1.5S31.33 28 30.5 28zm-1.5-8V9.5h2.5l1.96 2.5H29z' fill='white'/></svg>`,
+      scaledSize: new maps.Size(44, 44),
+      anchor: new maps.Point(22, 22),
+    };
+  }
+
+  function requestRoute(
+    maps: typeof google.maps,
+    map: google.maps.Map,
+    origin: google.maps.LatLngLiteral,
+    destination: google.maps.LatLngLiteral
+  ) {
+    const key = `${origin.lat},${origin.lng}->${destination.lat},${destination.lng}`;
+    if (routeKeyRef.current === key) return;
+    routeKeyRef.current = key;
+
+    if (!directionsServiceRef.current) {
+      directionsServiceRef.current = new maps.DirectionsService();
+    }
+    if (!directionsRendererRef.current) {
+      directionsRendererRef.current = new maps.DirectionsRenderer({
+        map,
+        suppressMarkers: true,
+        polylineOptions: {
+          strokeColor: colors.primary,
+          strokeWeight: 4,
+          strokeOpacity: 0.8,
+        },
+      });
+    }
+
+    directionsServiceRef.current.route(
+      {
+        origin,
+        destination,
+        travelMode: maps.TravelMode.DRIVING,
+      },
+      (result, status) => {
+        if (status === maps.DirectionsStatus.OK && result) {
+          directionsRendererRef.current?.setDirections(result);
+          const bounds = new maps.LatLngBounds();
+          bounds.extend(origin);
+          bounds.extend(destination);
+          map.fitBounds(bounds, 80);
+        } else {
+          directionsRendererRef.current?.setMap(null);
+          directionsRendererRef.current = null;
+          // Fallback: fit bounds without route
+          const bounds = new maps.LatLngBounds();
+          bounds.extend(origin);
+          bounds.extend(destination);
+          map.fitBounds(bounds, 80);
+        }
+      }
+    );
+  }
+
+  function clearRoute(map: google.maps.Map | null) {
+    if (directionsRendererRef.current) {
+      directionsRendererRef.current.setMap(null);
+      directionsRendererRef.current = null;
+    }
+    routeKeyRef.current = "";
+    if (map && location) {
+      map.panTo({ lat: location.latitude, lng: location.longitude });
+    }
+  }
+
+  // Initial map load
   useEffect(() => {
     let cancelled = false;
 
@@ -67,10 +141,19 @@ export default function MapComponent({ location, driverLocation, colors }: Props
             strokeWeight: 3,
           },
           title: "Your location",
+          zIndex: 10,
         });
 
         if (driverLocation) {
-          placeDriverMarker(maps, map, driverLocation, { latitude: lat, longitude: lng });
+          const dPos = { lat: driverLocation.latitude, lng: driverLocation.longitude };
+          driverMarkerRef.current = new maps.Marker({
+            map,
+            position: dPos,
+            icon: makeDriverIcon(maps),
+            title: "Your Driver",
+            zIndex: 9,
+          });
+          requestRoute(maps, map, dPos, { lat, lng });
         }
       })
       .catch((err) => {
@@ -80,57 +163,47 @@ export default function MapComponent({ location, driverLocation, colors }: Props
     return () => { cancelled = true; };
   }, []);
 
-  function placeDriverMarker(
-    maps: typeof google.maps,
-    map: google.maps.Map,
-    dl: { latitude: number; longitude: number },
-    ul: { latitude: number; longitude: number } | null
-  ) {
-    const pos = { lat: dl.latitude, lng: dl.longitude };
-    if (driverMarkerRef.current) {
-      driverMarkerRef.current.setPosition(pos);
-    } else {
-      driverMarkerRef.current = new maps.Marker({
-        map,
-        position: pos,
-        icon: {
-          url: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='44' height='44' viewBox='0 0 44 44'><circle cx='22' cy='22' r='22' fill='${encodeURIComponent(colors.secondary)}'/><path d='M32 16h-5L25 10H11c-1.66 0-3 1.34-3 3v13h3c0 2.48 2.02 4.5 4.5 4.5S20 28.48 20 26h6c0 2.48 2.02 4.5 4.5 4.5S35 28.48 35 26h3v-6l-4-4h-2zm-15.5 12c-.83 0-1.5-.67-1.5-1.5S15.67 25 16.5 25s1.5.67 1.5 1.5S17.33 28 16.5 28zm14 0c-.83 0-1.5-.67-1.5-1.5S29.67 25 30.5 25s1.5.67 1.5 1.5S31.33 28 30.5 28zm-1.5-8V9.5h2.5l1.96 2.5H29z' fill='white'/></svg>`,
-          scaledSize: new maps.Size(44, 44),
-          anchor: new maps.Point(22, 22),
-        },
-        title: "Your Driver",
-      });
-    }
-
-    if (ul) {
-      const bounds = new maps.LatLngBounds();
-      bounds.extend({ lat: ul.latitude, lng: ul.longitude });
-      bounds.extend(pos);
-      map.fitBounds(bounds, 80);
-    }
-  }
-
+  // Follow user location
   useEffect(() => {
     const maps = (window as any).google?.maps as typeof google.maps | undefined;
     const map = mapRef2.current;
     if (!maps || !map || !location) return;
+
     const pos = { lat: location.latitude, lng: location.longitude };
     userMarkerRef.current?.setPosition(pos);
     circleRef.current?.setCenter(pos);
+
     if (!driverLocation) map.panTo(pos);
   }, [location]);
 
+  // Update driver marker + route
   useEffect(() => {
     const maps = (window as any).google?.maps as typeof google.maps | undefined;
     const map = mapRef2.current;
     if (!maps || !map) return;
 
     if (driverLocation) {
-      placeDriverMarker(maps, map, driverLocation, location);
-    } else if (driverMarkerRef.current) {
-      driverMarkerRef.current.setMap(null);
+      const dPos = { lat: driverLocation.latitude, lng: driverLocation.longitude };
+
+      if (driverMarkerRef.current) {
+        driverMarkerRef.current.setPosition(dPos);
+      } else {
+        driverMarkerRef.current = new maps.Marker({
+          map,
+          position: dPos,
+          icon: makeDriverIcon(maps),
+          title: "Your Driver",
+          zIndex: 9,
+        });
+      }
+
+      if (location) {
+        requestRoute(maps, map, dPos, { lat: location.latitude, lng: location.longitude });
+      }
+    } else {
+      driverMarkerRef.current?.setMap(null);
       driverMarkerRef.current = null;
-      if (location) map.panTo({ lat: location.latitude, lng: location.longitude });
+      clearRoute(map);
     }
   }, [driverLocation]);
 

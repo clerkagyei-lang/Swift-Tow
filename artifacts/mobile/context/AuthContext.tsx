@@ -14,6 +14,7 @@ interface User {
   role: "user" | "driver" | "admin";
   avatarUrl: string | null;
   createdAt: string;
+  approvalStatus?: "pending" | "approved" | "suspended";
 }
 
 interface AuthContextType {

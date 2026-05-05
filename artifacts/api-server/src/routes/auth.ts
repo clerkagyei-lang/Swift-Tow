@@ -18,9 +18,58 @@ router.post("/auth/register", (req, res) => {
   }
 
   const user = store.createUser({ name, email, password, phone, role: role as "user" | "driver", avatarUrl: null });
-
   const { password: _, ...safeUser } = user;
   res.status(201).json({ token: user.id, user: safeUser });
+});
+
+router.post("/auth/register-driver", (req, res) => {
+  const { name, email, password, phone, vehicleType, vehiclePlate, licenseNumber } = req.body;
+
+  if (!name || !email || !password || !phone || !vehicleType || !vehiclePlate || !licenseNumber) {
+    res.status(400).json({ error: "validation_error", message: "All fields are required" });
+    return;
+  }
+
+  if (store.getDriverByEmail(email) || store.getUserByEmail(email)) {
+    res.status(400).json({ error: "email_taken", message: "Email already registered" });
+    return;
+  }
+
+  const driver = store.createDriver({
+    name,
+    email,
+    password,
+    phone,
+    vehicleType,
+    vehiclePlate,
+    licenseNumber,
+    approvalStatus: "pending",
+    approvalNote: null,
+    isOnline: false,
+    currentLocation: null,
+    avatarUrl: null,
+    rating: 0,
+    totalTrips: 0,
+    activeJobId: null,
+    earningsToday: 0,
+    earningsTotal: 0,
+  });
+
+  res.status(201).json({
+    token: driver.id,
+    user: {
+      id: driver.id,
+      name: driver.name,
+      email: driver.email,
+      phone: driver.phone,
+      role: "driver" as const,
+      avatarUrl: driver.avatarUrl,
+      createdAt: driver.createdAt,
+      approvalStatus: driver.approvalStatus,
+      vehicleType: driver.vehicleType,
+      vehiclePlate: driver.vehiclePlate,
+    },
+  });
 });
 
 router.post("/auth/login", (req, res) => {
@@ -40,8 +89,12 @@ router.post("/auth/login", (req, res) => {
   }
 
   // Check drivers
-  const driver = Array.from(store.drivers.values()).find((d) => d.email === email);
+  const driver = store.getDriverByEmail(email);
   if (driver && driver.password === password) {
+    if (driver.approvalStatus === "suspended") {
+      res.status(403).json({ error: "account_suspended", message: "Your driver account has been suspended. Contact support." });
+      return;
+    }
     res.json({
       token: driver.id,
       user: {
@@ -51,8 +104,8 @@ router.post("/auth/login", (req, res) => {
         phone: driver.phone,
         role: "driver" as const,
         avatarUrl: driver.avatarUrl,
-        createdAt: new Date().toISOString(),
-        // driver extras
+        createdAt: driver.createdAt,
+        approvalStatus: driver.approvalStatus,
         rating: driver.rating,
         totalTrips: driver.totalTrips,
         vehicleType: driver.vehicleType,
@@ -80,7 +133,6 @@ router.get("/auth/profile", (req, res) => {
     return;
   }
 
-  // Check drivers
   const driver = store.drivers.get(userId);
   if (driver) {
     const { password: _, ...safeDriver } = driver;

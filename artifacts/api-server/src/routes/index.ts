@@ -6,6 +6,7 @@ import driversRouter from "./drivers";
 import tripsRouter from "./trips";
 import paymentsRouter from "./payments";
 import statsRouter from "./stats";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(driversRouter);
 router.use(tripsRouter);
 router.use(paymentsRouter);
 router.use(statsRouter);
+router.use(adminRouter);
 
 export default router;

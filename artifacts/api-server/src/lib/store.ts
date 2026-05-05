@@ -25,8 +25,12 @@ export interface Driver {
   activeJobId: string | null;
   vehicleType: string;
   vehiclePlate: string;
+  licenseNumber: string;
+  approvalStatus: "pending" | "approved" | "suspended";
+  approvalNote: string | null;
   earningsToday: number;
   earningsTotal: number;
+  createdAt: string;
 }
 
 export interface TowRequest {
@@ -72,6 +76,19 @@ let totalEarnings = 0;
 function seedData() {
   const now = new Date().toISOString();
 
+  // Seed admin user
+  const adminId = randomUUID();
+  users.set(adminId, {
+    id: adminId,
+    name: "Swift Admin",
+    email: "admin@swifttow.com",
+    password: "admin123",
+    phone: "+233200000000",
+    role: "admin",
+    avatarUrl: null,
+    createdAt: now,
+  });
+
   const driver1Id = randomUUID();
   drivers.set(driver1Id, {
     id: driver1Id,
@@ -87,8 +104,12 @@ function seedData() {
     activeJobId: null,
     vehicleType: "Flatbed Tow Truck",
     vehiclePlate: "GR 4421-22",
+    licenseNumber: "GHA-DL-2019-00441",
+    approvalStatus: "approved",
+    approvalNote: null,
     earningsToday: 250,
     earningsTotal: 4200,
+    createdAt: now,
   });
 
   const driver2Id = randomUUID();
@@ -106,8 +127,12 @@ function seedData() {
     activeJobId: null,
     vehicleType: "Hook & Chain Truck",
     vehiclePlate: "GW 2234-20",
+    licenseNumber: "GHA-DL-2020-00789",
+    approvalStatus: "approved",
+    approvalNote: null,
     earningsToday: 150,
     earningsTotal: 2800,
+    createdAt: now,
   });
 
   const driver3Id = randomUUID();
@@ -125,8 +150,12 @@ function seedData() {
     activeJobId: null,
     vehicleType: "Flatbed Tow Truck",
     vehiclePlate: "AW 5567-21",
+    licenseNumber: "GHA-DL-2018-00221",
+    approvalStatus: "approved",
+    approvalNote: null,
     earningsToday: 0,
     earningsTotal: 6100,
+    createdAt: now,
   });
 
   const userId = randomUUID();
@@ -193,8 +222,19 @@ export const store = {
     return user;
   },
 
+  createDriver(data: Omit<Driver, "id" | "createdAt">): Driver {
+    const id = randomUUID();
+    const driver: Driver = { ...data, id, createdAt: new Date().toISOString() };
+    drivers.set(id, driver);
+    return driver;
+  },
+
   getUserByEmail(email: string): User | undefined {
     return Array.from(users.values()).find((u) => u.email === email);
+  },
+
+  getDriverByEmail(email: string): Driver | undefined {
+    return Array.from(drivers.values()).find((d) => d.email === email);
   },
 
   getUserById(id: string): User | undefined {
@@ -207,6 +247,18 @@ export const store = {
     const updated = { ...user, ...data };
     users.set(id, updated);
     return updated;
+  },
+
+  updateDriver(id: string, data: Partial<Driver>): Driver | null {
+    const driver = drivers.get(id);
+    if (!driver) return null;
+    const updated = { ...driver, ...data };
+    drivers.set(id, updated);
+    return updated;
+  },
+
+  getPendingDrivers(): Driver[] {
+    return Array.from(drivers.values()).filter((d) => d.approvalStatus === "pending");
   },
 
   createTowRequest(data: Omit<TowRequest, "id" | "createdAt" | "updatedAt">): TowRequest {

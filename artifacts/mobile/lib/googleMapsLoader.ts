@@ -19,7 +19,7 @@ export function loadGoogleMaps(): Promise<typeof google.maps> {
 
     const key = process.env.EXPO_PUBLIC_GOOGLE_MAPS_KEY ?? "";
     if (!key) {
-      reject(new Error("EXPO_PUBLIC_GOOGLE_MAPS_KEY is not set"));
+      reject(new Error("Google Maps API key is not configured"));
       loadPromise = null;
       return;
     }
