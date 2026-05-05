@@ -10,7 +10,8 @@ pnpm workspace monorepo using TypeScript with an Expo mobile app and a Node.js A
 | Artifact | Kind | Path |
 |---|---|---|
 | `artifacts/mobile` | Expo (React Native) | Preview via Expo Dev Domain |
-| `artifacts/api-server` | Express API + Socket.io | `/api/*` |
+| `artifacts/api-server` | Express API + Socket.io | `/api/*`, `/admin-dashboard/*` |
+| `artifacts/admin-dashboard` | React/Vite (build-only) | Built to `dist/public/`, served by api-server |
 
 ## Stack
 
@@ -55,9 +56,24 @@ pnpm workspace monorepo using TypeScript with an Expo mobile app and a Node.js A
 - Dark background on login: `#34495E`
 - All screens use `useColors()` hook from `constants/colors.ts`
 
+## Admin Dashboard
+
+React/Vite SPA at `/admin-dashboard/`. Login: `admin@swifttow.com` / `admin123`.
+
+Pages: Dashboard (stats), Drivers (approve/reject), Requests (tow list).
+
+**Serving architecture**: The admin dashboard is built (Vite production build) and served as static files by the API server's Express (`app.use("/admin-dashboard", express.static(...))`). The admin-dashboard workflow is intentionally disabled — its port was not detectable by Replit's workflow health-check system.
+
+**To rebuild after code changes**:
+```
+PORT=22133 BASE_PATH=/admin-dashboard/ pnpm --filter @workspace/admin-dashboard run build
+```
+Then restart the api-server workflow to reload the files.
+
 ## Architecture Notes
 
 - Socket.io mounts at default path; the reverse proxy maps `/api` → api-server port 8080
+- Admin dashboard static files served by Express at `/admin-dashboard/` (port 8080)
 - Mobile socket connects to `https://${EXPO_PUBLIC_DOMAIN}` with `path: "/api/socket.io"`
 - `MapComponent.native.tsx` / `MapComponent.web.tsx` — platform-specific map rendering
 - `MapComponent.tsx` — TypeScript resolution shim (re-exports web version)

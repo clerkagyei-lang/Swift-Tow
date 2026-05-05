@@ -1,6 +1,7 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, { type Express } from "express";
+import path from "path";
 import pinoHttp from "pino-http";
 import { logger } from "./lib/logger";
 import router from "./routes";
@@ -32,5 +33,14 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use("/api", router);
+
+const adminDistPath = path.resolve(
+  import.meta.dirname,
+  "../../admin-dashboard/dist/public",
+);
+app.use("/admin-dashboard", express.static(adminDistPath));
+app.get("/admin-dashboard/*path", (_req, res) => {
+  res.sendFile(path.join(adminDistPath, "index.html"));
+});
 
 export default app;
