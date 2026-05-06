@@ -305,6 +305,9 @@ export const store = {
     const pendingRequests = Array.from(towRequests.values()).filter(
       (r) => r.status === "pending"
     ).length;
+    const pendingDrivers = Array.from(drivers.values()).filter(
+      (d) => d.approvalStatus === "pending"
+    ).length;
     const recentRequests = Array.from(towRequests.values())
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 5);
@@ -315,6 +318,7 @@ export const store = {
       totalEarnings,
       totalTrips: trips.size,
       pendingRequests,
+      pendingDrivers,
       recentRequests,
     };
   },

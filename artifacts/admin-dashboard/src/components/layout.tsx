@@ -11,17 +11,20 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-
-const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/drivers", label: "Drivers", icon: Users },
-  { href: "/requests", label: "Tow Requests", icon: Truck },
-];
+import { useGetDashboardStats } from "@workspace/api-client-react";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const logout = useAuthStore((s) => s.logout);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { data: stats } = useGetDashboardStats({ query: { refetchInterval: 15000 } });
+  const pendingDrivers = stats?.pendingDrivers ?? 0;
+
+  const navItems = [
+    { href: "/", label: "Dashboard", icon: LayoutDashboard, badge: 0 },
+    { href: "/drivers", label: "Drivers", icon: Users, badge: pendingDrivers },
+    { href: "/requests", label: "Tow Requests", icon: Truck, badge: 0 },
+  ];
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -56,7 +59,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-          {navItems.map(({ href, label, icon: Icon }) => {
+          {navItems.map(({ href, label, icon: Icon, badge }) => {
             const active = location === href;
             return (
               <Link key={href} href={href} onClick={() => setSidebarOpen(false)}>
@@ -70,7 +73,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`}
                 >
                   <Icon className="w-4 h-4 shrink-0" />
-                  {label}
+                  <span className="flex-1">{label}</span>
+                  {badge > 0 && (
+                    <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-amber-500 text-white text-xs font-bold leading-none">
+                      {badge}
+                    </span>
+                  )}
                 </div>
               </Link>
             );

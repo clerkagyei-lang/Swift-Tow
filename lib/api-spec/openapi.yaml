@@ -693,6 +693,9 @@ components:
           type: integer
         pendingRequests:
           type: integer
+        pendingDrivers:
+          type: integer
+          description: Number of driver applications awaiting approval
         recentRequests:
           type: array
           items:
@@ -703,4 +706,5 @@ components:
         - totalEarnings
         - totalTrips
         - pendingRequests
+        - pendingDrivers
         - recentRequests

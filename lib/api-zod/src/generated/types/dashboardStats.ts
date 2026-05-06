@@ -13,5 +13,7 @@ export interface DashboardStats {
   totalEarnings: number;
   totalTrips: number;
   pendingRequests: number;
+  /** Number of driver applications awaiting approval */
+  pendingDrivers: number;
   recentRequests: TowRequest[];
 }

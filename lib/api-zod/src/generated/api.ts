@@ -372,6 +372,9 @@ export const GetDashboardStatsResponse = zod.object({
   totalEarnings: zod.number(),
   totalTrips: zod.number(),
   pendingRequests: zod.number(),
+  pendingDrivers: zod
+    .number()
+    .describe("Number of driver applications awaiting approval"),
   recentRequests: zod.array(
     zod.object({
       id: zod.string(),

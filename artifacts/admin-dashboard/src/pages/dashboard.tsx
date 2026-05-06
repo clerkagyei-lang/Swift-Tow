@@ -13,6 +13,7 @@ import {
   XCircle,
   AlertCircle,
   Activity,
+  UserCheck,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -99,10 +100,11 @@ export default function DashboardPage() {
           loading={loading}
         />
         <StatCard
-          title="Total Trips"
-          value={stats?.totalTrips ?? 0}
-          icon={CheckCircle2}
+          title="Pending Approvals"
+          value={stats?.pendingDrivers ?? 0}
+          icon={UserCheck}
           loading={loading}
+          accent={(stats?.pendingDrivers ?? 0) > 0 ? "bg-amber-500" : undefined}
         />
       </div>
 
