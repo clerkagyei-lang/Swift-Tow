@@ -14,8 +14,10 @@ import {
   AlertCircle,
   Activity,
   UserCheck,
+  ArrowRight,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { Link } from "wouter";
 
 function StatCard({
   title,
@@ -23,28 +25,47 @@ function StatCard({
   icon: Icon,
   loading,
   accent,
+  href,
 }: {
   title: string;
   value: string | number;
   icon: React.ElementType;
   loading?: boolean;
   accent?: string;
+  href?: string;
 }) {
+  const inner = (
+    <CardContent className="p-5">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium text-muted-foreground">{title}</p>
+        <div className={`p-2 rounded-lg ${accent || "bg-primary/10"}`}>
+          <Icon className={`w-4 h-4 ${accent ? "text-white" : "text-primary"}`} />
+        </div>
+      </div>
+      {loading ? (
+        <Skeleton className="h-8 w-20 mt-2" />
+      ) : (
+        <div className="flex items-end justify-between mt-2">
+          <p className="text-2xl font-bold text-foreground" data-testid={`text-stat-value-${title.toLowerCase().replace(/\s+/g, "-")}`}>{value}</p>
+          {href && <ArrowRight className="w-4 h-4 text-muted-foreground" />}
+        </div>
+      )}
+    </CardContent>
+  );
+
+  if (href) {
+    return (
+      <Link href={href}>
+        <Card className="shadow-sm cursor-pointer hover:border-primary/40 hover:shadow-md transition-all" data-testid={`card-stat-${title.toLowerCase().replace(/\s+/g, "-")}`}>
+          {inner}
+        </Card>
+      </Link>
+    );
+  }
+
   return (
     <Card className="shadow-sm" data-testid={`card-stat-${title.toLowerCase().replace(/\s+/g, "-")}`}>
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <div className={`p-2 rounded-lg ${accent || "bg-primary/10"}`}>
-            <Icon className={`w-4 h-4 ${accent ? "text-white" : "text-primary"}`} />
-          </div>
-        </div>
-        {loading ? (
-          <Skeleton className="h-8 w-20 mt-2" />
-        ) : (
-          <p className="text-2xl font-bold mt-2 text-foreground" data-testid={`text-stat-value-${title.toLowerCase().replace(/\s+/g, "-")}`}>{value}</p>
-        )}
-      </CardContent>
+      {inner}
     </Card>
   );
 }
@@ -105,6 +126,7 @@ export default function DashboardPage() {
           icon={UserCheck}
           loading={loading}
           accent={(stats?.pendingDrivers ?? 0) > 0 ? "bg-amber-500" : undefined}
+          href="/drivers"
         />
       </div>
 
