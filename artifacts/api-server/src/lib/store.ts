@@ -158,6 +158,53 @@ function seedData() {
     createdAt: now,
   });
 
+  // Pending driver applications — visible in admin dashboard for approval
+  const pending1Id = randomUUID();
+  drivers.set(pending1Id, {
+    id: pending1Id,
+    name: "Yaw Darko",
+    email: "yaw.darko@gmail.com",
+    password: "driver123",
+    phone: "+233247112233",
+    isOnline: false,
+    currentLocation: null,
+    avatarUrl: null,
+    rating: 0,
+    totalTrips: 0,
+    activeJobId: null,
+    vehicleType: "Wheel-Lift Truck",
+    vehiclePlate: "AS 1192-23",
+    licenseNumber: "GHA-DL-2023-00912",
+    approvalStatus: "pending",
+    approvalNote: null,
+    earningsToday: 0,
+    earningsTotal: 0,
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+  });
+
+  const pending2Id = randomUUID();
+  drivers.set(pending2Id, {
+    id: pending2Id,
+    name: "Akosua Frimpong",
+    email: "akosua.f@gmail.com",
+    password: "driver123",
+    phone: "+233243998877",
+    isOnline: false,
+    currentLocation: null,
+    avatarUrl: null,
+    rating: 0,
+    totalTrips: 0,
+    activeJobId: null,
+    vehicleType: "Flatbed Tow Truck",
+    vehiclePlate: "ER 8834-22",
+    licenseNumber: "GHA-DL-2022-00554",
+    approvalStatus: "pending",
+    approvalNote: null,
+    earningsToday: 0,
+    earningsTotal: 0,
+    createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+  });
+
   const userId = randomUUID();
   users.set(userId, {
     id: userId,
