@@ -52,6 +52,9 @@ const TOW_AMOUNTS: Record<string, number> = {
   repair: 100,
 };
 
+// Web starting position — near Labone, Accra
+const WEB_START = { latitude: 5.614818, longitude: -0.205874 };
+
 export function DriverProvider({
   driverId,
   children,
@@ -65,15 +68,60 @@ export function DriverProvider({
   const [tripStatus, setTripStatus] = useState<TripStatus>("idle");
   const [activeTrip, setActiveTrip] = useState<ActiveTrip | null>(null);
   const [earningsToday, setEarningsToday] = useState(0);
+
   const socketRef = useRef<Socket | null>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
 
-  // Refs so socket callbacks always read the latest values (avoid stale closures)
+  // Web simulation refs
+  const webSimIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const webCurrentLocRef = useRef<{ latitude: number; longitude: number }>(WEB_START);
+  const webTargetLocRef = useRef<{ latitude: number; longitude: number } | null>(null);
+
+  // Refs so socket callbacks always read current values (avoid stale closures)
   const isOnlineRef = useRef(false);
   const tripStatusRef = useRef<TripStatus>("idle");
+  const driverIdRef = useRef(driverId);
 
   useEffect(() => { isOnlineRef.current = isOnline; }, [isOnline]);
   useEffect(() => { tripStatusRef.current = tripStatus; }, [tripStatus]);
+  useEffect(() => { driverIdRef.current = driverId; }, [driverId]);
+
+  // ── Web simulation helpers ─────────────────────────────────────────────────
+
+  const stopWebSim = useCallback(() => {
+    if (webSimIntervalRef.current) {
+      clearInterval(webSimIntervalRef.current);
+      webSimIntervalRef.current = null;
+    }
+    webTargetLocRef.current = null;
+  }, []);
+
+  const startWebMovement = useCallback((
+    start: { latitude: number; longitude: number },
+    target: { latitude: number; longitude: number }
+  ) => {
+    stopWebSim();
+    webCurrentLocRef.current = start;
+    webTargetLocRef.current = target;
+
+    webSimIntervalRef.current = setInterval(() => {
+      const cur = webCurrentLocRef.current;
+      const tgt = webTargetLocRef.current;
+      const id = driverIdRef.current;
+      if (!tgt || !id) return;
+
+      // Move 18% of the remaining distance each tick — exponential ease-in
+      const newLat = cur.latitude + (tgt.latitude - cur.latitude) * 0.18;
+      const newLng = cur.longitude + (tgt.longitude - cur.longitude) * 0.18;
+      const newLoc = { latitude: newLat, longitude: newLng };
+
+      webCurrentLocRef.current = newLoc;
+      setDriverLocation(newLoc);
+      socketRef.current?.emit("driver:location", { driverId: id, location: newLoc });
+    }, 2500);
+  }, [stopWebSim]);
+
+  // ── Socket setup ──────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!driverId) return;
@@ -89,7 +137,6 @@ export function DriverProvider({
     });
 
     socket.on("request:incoming", (req: any) => {
-      // Use refs so we always see the current online/trip state, not stale closure values
       if (tripStatusRef.current === "idle" && isOnlineRef.current) {
         setIncomingRequest({
           id: req.id,
@@ -111,18 +158,24 @@ export function DriverProvider({
     };
   }, [driverId]);
 
+  // ── Location tracking ──────────────────────────────────────────────────────
+
   const startLocationTracking = useCallback(async () => {
     if (Platform.OS === "web") {
-      const loc = { latitude: 5.614818, longitude: -0.205874 };
-      setDriverLocation(loc);
+      // Emit starting location immediately so user map can see the driver
+      webCurrentLocRef.current = WEB_START;
+      setDriverLocation(WEB_START);
+      socketRef.current?.emit("driver:location", { driverId, location: WEB_START });
       return;
     }
+
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== "granted") return;
 
     const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
     const loc = { latitude: current.coords.latitude, longitude: current.coords.longitude };
     setDriverLocation(loc);
+    socketRef.current?.emit("driver:location", { driverId, location: loc });
 
     locationSubRef.current = await Location.watchPositionAsync(
       { accuracy: Location.Accuracy.High, timeInterval: 3000, distanceInterval: 5 },
@@ -137,7 +190,10 @@ export function DriverProvider({
   const stopLocationTracking = useCallback(() => {
     locationSubRef.current?.remove();
     locationSubRef.current = null;
-  }, []);
+    stopWebSim();
+  }, [stopWebSim]);
+
+  // ── Driver actions ──────────────────────────────────────────────────────────
 
   const setOnline = useCallback(async (online: boolean) => {
     setIsOnline(online);
@@ -150,15 +206,16 @@ export function DriverProvider({
       await fetch(`https://${API_DOMAIN}/api/drivers/${driverId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isOnline: online, currentLocation: driverLocation }),
+        body: JSON.stringify({ isOnline: online, currentLocation: webCurrentLocRef.current }),
       });
     } catch {}
-  }, [driverId, driverLocation, startLocationTracking, stopLocationTracking]);
+  }, [driverId, startLocationTracking, stopLocationTracking]);
 
   const acceptRequest = useCallback((requestId: string) => {
     if (!incomingRequest || !driverId) return;
     socketRef.current?.emit("request:accept", { requestId, driverId });
-    setActiveTrip({
+
+    const trip: ActiveTrip = {
       requestId,
       userId: incomingRequest.userId,
       userName: incomingRequest.userName,
@@ -167,10 +224,17 @@ export function DriverProvider({
       pickupLocation: incomingRequest.pickupLocation,
       pickupAddress: incomingRequest.pickupAddress,
       vehicleDetails: incomingRequest.vehicleDetails,
-    });
+    };
+
+    setActiveTrip(trip);
     setTripStatus("accepted");
     setIncomingRequest(null);
-  }, [incomingRequest, driverId]);
+
+    // On web: simulate the driver moving toward the pickup location
+    if (Platform.OS === "web") {
+      startWebMovement(webCurrentLocRef.current, incomingRequest.pickupLocation);
+    }
+  }, [incomingRequest, driverId, startWebMovement]);
 
   const declineRequest = useCallback(() => {
     setIncomingRequest(null);
@@ -181,11 +245,15 @@ export function DriverProvider({
     socketRef.current?.emit("request:complete", { requestId: activeTrip.requestId, amount });
     setEarningsToday((prev) => prev + amount);
     setTripStatus("completed");
+
+    // Stop web movement simulation
+    stopWebSim();
+
     setTimeout(() => {
       setTripStatus("idle");
       setActiveTrip(null);
     }, 3000);
-  }, [activeTrip]);
+  }, [activeTrip, stopWebSim]);
 
   return (
     <DriverContext.Provider

@@ -44,10 +44,14 @@ pnpm workspace monorepo using TypeScript with an Expo mobile app and a Node.js A
 - Tow request flow: select tow type (Flatbed/Hook & Chain/Repair) → confirm → real-time socket events
 - Payment: MTN MoMo, Telecel Cash, AT Money, Cash
 - Real-time via Socket.io: user joins room, driver accepts → `request:accepted`, trip complete → `request:completed`
+- **Live tracking**: active-request screen shows full-screen map with user pin + approaching driver truck marker; route line drawn between them (Google Directions on web, polyline on native)
+- **Driver GPS emission**: DriverContext emits `driver:location` via socket on every native GPS update (3s interval); on web, simulates smooth exponential movement toward pickup after accepting
+- **Stale closure fix**: TowContext uses refs for `towStatus` / `activeRequest` so socket callbacks always read current state
 - Trips history screen using generated React Query hooks
 - Profile with QR code modal, edit profile, sign out
-- Map: `react-native-maps` on native (iOS/Android), light fallback on web
+- Map: `react-native-maps` on native (iOS/Android), Google Maps JS API on web
 - Platform guards throughout (web safe insets: 67px top, 34px bottom)
+- Admin dashboard sidebar shows amber badge with pending driver count (polls every 15s)
 
 ## Branding
 

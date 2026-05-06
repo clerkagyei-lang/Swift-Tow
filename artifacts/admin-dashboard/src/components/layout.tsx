@@ -11,13 +11,13 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { useGetDashboardStats } from "@workspace/api-client-react";
+import { useGetDashboardStats, getGetDashboardStatsQueryKey } from "@workspace/api-client-react";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const logout = useAuthStore((s) => s.logout);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { data: stats } = useGetDashboardStats({ query: { refetchInterval: 15000 } });
+  const { data: stats } = useGetDashboardStats({ query: { queryKey: getGetDashboardStatsQueryKey(), refetchInterval: 15000 } });
   const pendingDrivers = stats?.pendingDrivers ?? 0;
 
   const navItems = [
