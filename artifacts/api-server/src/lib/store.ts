@@ -73,13 +73,21 @@ const towRequests = new Map<string, TowRequest>();
 const trips = new Map<string, Trip>();
 let totalEarnings = 0;
 
+// Fixed seed IDs — stable across server restarts so localStorage-cached sessions remain valid
+const SEED_ADMIN_ID    = "00000000-0000-0000-0000-000000000001";
+const SEED_DRIVER_1_ID = "00000000-0000-0000-0000-000000000011";
+const SEED_DRIVER_2_ID = "00000000-0000-0000-0000-000000000012";
+const SEED_DRIVER_3_ID = "00000000-0000-0000-0000-000000000013";
+const SEED_PENDING_1_ID = "00000000-0000-0000-0000-000000000021";
+const SEED_PENDING_2_ID = "00000000-0000-0000-0000-000000000022";
+const SEED_USER_ID     = "00000000-0000-0000-0000-000000000031";
+
 function seedData() {
   const now = new Date().toISOString();
 
   // Seed admin user
-  const adminId = randomUUID();
-  users.set(adminId, {
-    id: adminId,
+  users.set(SEED_ADMIN_ID, {
+    id: SEED_ADMIN_ID,
     name: "Swift Admin",
     email: "admin@swifttow.com",
     password: "admin123",
@@ -89,9 +97,8 @@ function seedData() {
     createdAt: now,
   });
 
-  const driver1Id = randomUUID();
-  drivers.set(driver1Id, {
-    id: driver1Id,
+  drivers.set(SEED_DRIVER_1_ID, {
+    id: SEED_DRIVER_1_ID,
     name: "Kwame Asante",
     email: "kwame@swifttow.com",
     password: "driver123",
@@ -112,9 +119,8 @@ function seedData() {
     createdAt: now,
   });
 
-  const driver2Id = randomUUID();
-  drivers.set(driver2Id, {
-    id: driver2Id,
+  drivers.set(SEED_DRIVER_2_ID, {
+    id: SEED_DRIVER_2_ID,
     name: "Kofi Mensah",
     email: "kofi@swifttow.com",
     password: "driver123",
@@ -135,9 +141,8 @@ function seedData() {
     createdAt: now,
   });
 
-  const driver3Id = randomUUID();
-  drivers.set(driver3Id, {
-    id: driver3Id,
+  drivers.set(SEED_DRIVER_3_ID, {
+    id: SEED_DRIVER_3_ID,
     name: "Ama Owusu",
     email: "ama@swifttow.com",
     password: "driver123",
@@ -159,9 +164,8 @@ function seedData() {
   });
 
   // Pending driver applications — visible in admin dashboard for approval
-  const pending1Id = randomUUID();
-  drivers.set(pending1Id, {
-    id: pending1Id,
+  drivers.set(SEED_PENDING_1_ID, {
+    id: SEED_PENDING_1_ID,
     name: "Yaw Darko",
     email: "yaw.darko@gmail.com",
     password: "driver123",
@@ -182,9 +186,8 @@ function seedData() {
     createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
   });
 
-  const pending2Id = randomUUID();
-  drivers.set(pending2Id, {
-    id: pending2Id,
+  drivers.set(SEED_PENDING_2_ID, {
+    id: SEED_PENDING_2_ID,
     name: "Akosua Frimpong",
     email: "akosua.f@gmail.com",
     password: "driver123",
@@ -205,9 +208,8 @@ function seedData() {
     createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
   });
 
-  const userId = randomUUID();
-  users.set(userId, {
-    id: userId,
+  users.set(SEED_USER_ID, {
+    id: SEED_USER_ID,
     name: "John Doe",
     email: "john@example.com",
     password: "password123",
@@ -221,8 +223,8 @@ function seedData() {
   trips.set(trip1Id, {
     id: trip1Id,
     towRequestId: randomUUID(),
-    userId,
-    driverId: driver1Id,
+    userId: SEED_USER_ID,
+    driverId: SEED_DRIVER_1_ID,
     driverName: "Kwame Asante",
     pickupAddress: "Accra Mall, Spintex Road",
     dropoffAddress: "Tema Community 7",
@@ -238,8 +240,8 @@ function seedData() {
   trips.set(trip2Id, {
     id: trip2Id,
     towRequestId: randomUUID(),
-    userId,
-    driverId: driver2Id,
+    userId: SEED_USER_ID,
+    driverId: SEED_DRIVER_2_ID,
     driverName: "Kofi Mensah",
     pickupAddress: "Kotoka International Airport",
     dropoffAddress: "East Legon",
