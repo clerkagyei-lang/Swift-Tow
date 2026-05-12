@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
   Pressable,
@@ -22,13 +23,24 @@ export default function PendingApprovalScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
+  const router = useRouter();
 
   const styles = makeStyles(colors);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <Pressable
+          onPress={() => { logout(); router.replace("/auth/login"); }}
+          style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.6 }]}
+          hitSlop={12}
+        >
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
+        </Pressable>
+      </View>
+
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 24 }]}
+        contentContainerStyle={[styles.scroll, { paddingTop: 16, paddingBottom: insets.bottom + 24 }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.iconWrap}>
@@ -92,6 +104,8 @@ export default function PendingApprovalScreen() {
 function makeStyles(colors: ReturnType<typeof useColors>) {
   return StyleSheet.create({
     container: { flex: 1 },
+    topBar: { paddingHorizontal: 16, paddingBottom: 8 },
+    backBtn: { alignSelf: "flex-start", padding: 8, borderRadius: 20, backgroundColor: colors.muted },
     scroll: { flexGrow: 1, paddingHorizontal: 24, alignItems: "center" },
     iconWrap: {
       width: 120, height: 120, borderRadius: 60,
