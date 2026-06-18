@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "pnpm install --frozen-lockfile && PORT=3000 BASE_PATH=/admin-dashboard/ pnpm --filter @workspace/admin-dashboard run build && pnpm --filter @workspace/api-server run build"
+buildCommand = "PORT=3000 BASE_PATH=/admin-dashboard/ pnpm --filter @workspace/admin-dashboard run build && pnpm --filter @workspace/api-server run build"
 
 [deploy]
 startCommand = "node --enable-source-maps ./artifacts/api-server/dist/index.mjs"
