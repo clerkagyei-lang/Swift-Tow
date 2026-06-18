@@ -6,7 +6,7 @@ function RootLayoutNav() {
   useEffect(() => {
   if (isLoading) return;
 
-<<<<<<< HEAD
+ HEAD
     if (!user && !inAuth) {
       router.replace("/auth/login" as any);
       return;
@@ -27,7 +27,7 @@ function RootLayoutNav() {
       return;
     }
     if (user && user.role !== "driver" && inDriver) {
-=======
+
   const inAuth = segments[0] === "auth";
   const inDriver = segments[0] === "(driver)";
   const inTabs = segments[0] === "(tabs)";
@@ -53,7 +53,7 @@ function RootLayoutNav() {
     } else if (role === "admin") {
       router.replace("/admin" as any);
     } else {
->>>>>>> bbc98a0dda77824b81b214f5fdb67ae89aaf2e6f
+ bbc98a0dda77824b81b214f5fdb67ae89aaf2e6f
       router.replace("/(tabs)/" as any);
     }
     return;
@@ -65,7 +65,7 @@ function RootLayoutNav() {
     return;
   }
 
-<<<<<<< HEAD
+ HEAD
   return (
     <TowProvider userId={user?.role !== "driver" ? (user?.id ?? null) : null}>
       <DriverProvider driverId={user?.role === "driver" ? (user?.id ?? null) : null}>
@@ -82,12 +82,12 @@ function RootLayoutNav() {
     </TowProvider>
   );
 }
-=======
+
   if (role === "admin" && !inAdmin && !inAuth) {
     router.replace("/admin" as any);
     return;
   }
->>>>>>> bbc98a0dda77824b81b214f5fdb67ae89aaf2e6f
+ bbc98a0dda77824b81b214f5fdb67ae89aaf2e6f
 
   if (role === "driver" && status === "approved" && inTabs) {
     router.replace("/(driver)/" as any);
