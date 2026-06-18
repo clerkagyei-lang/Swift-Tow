@@ -1,38 +1,12 @@
-import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-  useFonts,
-} from "@expo-google-fonts/inter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack, useRouter, useSegments } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { KeyboardProvider } from "react-native-keyboard-controller";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-
-import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { AuthProvider, useAuth } from "@/context/AuthContext";
-import { TowProvider } from "@/context/TowContext";
-import { DriverProvider } from "@/context/DriverContext";
-
-SplashScreen.preventAutoHideAsync();
-
-const queryClient = new QueryClient();
-
 function RootLayoutNav() {
   const { user, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoading) return;
-    const inAuth = segments[0] === "auth";
-    const inDriver = segments[0] === "(driver)";
-    const inTabs = segments[0] === "(tabs)";
+  if (isLoading) return;
 
+<<<<<<< HEAD
     if (!user && !inAuth) {
       router.replace("/auth/login" as any);
       return;
@@ -53,12 +27,45 @@ function RootLayoutNav() {
       return;
     }
     if (user && user.role !== "driver" && inDriver) {
+=======
+  const inAuth = segments[0] === "auth";
+  const inDriver = segments[0] === "(driver)";
+  const inTabs = segments[0] === "(tabs)";
+  const inAdmin = segments[0] === "admin";
+  const inPending = segments[1] === "pending-approval";
+
+  // 1. If no user, must be in Auth
+  if (!user) {
+    if (!inAuth) router.replace("/auth/login" as any);
+    return;
+  }
+
+  // 2. Safely access user properties
+  const role = user?.role;
+  const status = user?.approvalStatus;
+
+  // 3. Handle Auth routes for logged-in users
+  if (inAuth && !inPending) {
+    if (role === "driver" && status === "pending") {
+      router.replace("/auth/pending-approval" as any);
+    } else if (role === "driver") {
+      router.replace("/(driver)/" as any);
+    } else if (role === "admin") {
+      router.replace("/admin" as any);
+    } else {
+>>>>>>> bbc98a0dda77824b81b214f5fdb67ae89aaf2e6f
       router.replace("/(tabs)/" as any);
     }
-  }, [user, isLoading, segments]);
+    return;
+  }
 
-  if (isLoading) return null;
+  // 4. Role-based protection
+  if (role === "driver" && status === "pending" && !inPending) {
+    router.replace("/auth/pending-approval" as any);
+    return;
+  }
 
+<<<<<<< HEAD
   return (
     <TowProvider userId={user?.role !== "driver" ? (user?.id ?? null) : null}>
       <DriverProvider driverId={user?.role === "driver" ? (user?.id ?? null) : null}>
@@ -75,36 +82,20 @@ function RootLayoutNav() {
     </TowProvider>
   );
 }
+=======
+  if (role === "admin" && !inAdmin && !inAuth) {
+    router.replace("/admin" as any);
+    return;
+  }
+>>>>>>> bbc98a0dda77824b81b214f5fdb67ae89aaf2e6f
 
-export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-  });
+  if (role === "driver" && status === "approved" && inTabs) {
+    router.replace("/(driver)/" as any);
+    return;
+  }
 
-  useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, fontError]);
-
-  if (!fontsLoaded && !fontError) return null;
-
-  return (
-    <SafeAreaProvider>
-      <ErrorBoundary>
-        <QueryClientProvider client={queryClient}>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <KeyboardProvider>
-              <AuthProvider>
-                <RootLayoutNav />
-              </AuthProvider>
-            </KeyboardProvider>
-          </GestureHandlerRootView>
-        </QueryClientProvider>
-      </ErrorBoundary>
-    </SafeAreaProvider>
-  );
-}
+  if (role !== "driver" && role !== "admin" && inDriver) {
+    router.replace("/(tabs)/" as any);
+    return;
+  }
+}, [user, isLoading, segments]);
