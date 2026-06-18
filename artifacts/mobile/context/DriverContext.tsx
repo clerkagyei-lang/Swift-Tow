@@ -38,7 +38,7 @@ interface DriverContextType {
   earningsToday: number;
   acceptRequest: (requestId: string) => void;
   declineRequest: () => void;
-  completeTrip: (amount: number) => void;
+  completeTrip: () => void;
   socket: Socket | null;
 }
 
@@ -46,7 +46,32 @@ const DriverContext = createContext<DriverContextType | null>(null);
 
 const API_DOMAIN = process.env.EXPO_PUBLIC_DOMAIN ?? "localhost";
 
-const TOW_AMOUNTS: Record<string, number> = {
+const RATE_PER_KM = 1;
+const MIN_FARE = 10;
+
+export function haversineKm(
+  lat1: number, lon1: number,
+  lat2: number, lon2: number
+): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+
+export function computeFare(
+  pickup: { latitude: number; longitude: number },
+  dropoff: { latitude: number; longitude: number }
+): number {
+  const distKm = haversineKm(pickup.latitude, pickup.longitude, dropoff.latitude, dropoff.longitude);
+  return Math.max(MIN_FARE, Math.round(distKm * RATE_PER_KM * 100) / 100);
+}
+
+const TOW_ESTIMATED_AMOUNTS: Record<string, number> = {
   flatbed: 250,
   hook_chain: 150,
   repair: 100,
@@ -100,7 +125,7 @@ export function DriverProvider({
           pickupLocation: req.pickupLocation,
           pickupAddress: req.pickupAddress,
           vehicleDetails: req.vehicleDetails,
-          estimatedAmount: TOW_AMOUNTS[req.towType] ?? 200,
+          estimatedAmount: TOW_ESTIMATED_AMOUNTS[req.towType] ?? 200,
         });
       }
     });
@@ -176,8 +201,10 @@ export function DriverProvider({
     setIncomingRequest(null);
   }, []);
 
-  const completeTrip = useCallback((amount: number) => {
+  const completeTrip = useCallback(() => {
     if (!activeTrip) return;
+    const dropoff = driverLocation ?? activeTrip.pickupLocation;
+    const amount = computeFare(activeTrip.pickupLocation, dropoff);
     socketRef.current?.emit("request:complete", { requestId: activeTrip.requestId, amount });
     setEarningsToday((prev) => prev + amount);
     setTripStatus("completed");
@@ -185,7 +212,7 @@ export function DriverProvider({
       setTripStatus("idle");
       setActiveTrip(null);
     }, 3000);
-  }, [activeTrip]);
+  }, [activeTrip, driverLocation]);
 
   return (
     <DriverContext.Provider

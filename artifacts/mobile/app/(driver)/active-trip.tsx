@@ -9,11 +9,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useDriver } from "@/context/DriverContext";
+import { useDriver, computeFare, haversineKm } from "@/context/DriverContext";
 import { useColors } from "@/hooks/useColors";
 import DriverMapComponent from "@/components/DriverMapComponent";
 
@@ -30,11 +29,25 @@ export default function ActiveTripScreen() {
   const insets = useSafeAreaInsets();
   const { activeTrip, tripStatus, completeTrip, driverLocation } = useDriver();
   const mapRef = useRef<any>(null);
-  const [amount, setAmount] = useState("");
   const [isCompleting, setIsCompleting] = useState(false);
 
   const bottomPad = insets.bottom + TAB_BAR_HEIGHT;
   const styles = makeStyles(colors, bottomPad);
+
+  const dropoff = driverLocation ?? activeTrip?.pickupLocation ?? null;
+  const distanceKm =
+    activeTrip && dropoff
+      ? haversineKm(
+          activeTrip.pickupLocation.latitude,
+          activeTrip.pickupLocation.longitude,
+          dropoff.latitude,
+          dropoff.longitude
+        )
+      : 0;
+  const fare =
+    activeTrip && dropoff
+      ? computeFare(activeTrip.pickupLocation, dropoff)
+      : 0;
 
   if (!activeTrip || tripStatus === "idle") {
     return (
@@ -66,12 +79,10 @@ export default function ActiveTripScreen() {
   };
 
   const handleComplete = () => {
-    const parsed = parseFloat(amount);
-    if (!parsed || parsed < 50) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setIsCompleting(true);
     setTimeout(() => {
-      completeTrip(parsed);
+      completeTrip();
       setIsCompleting(false);
     }, 800);
   };
@@ -85,7 +96,6 @@ export default function ActiveTripScreen() {
         colors={colors}
       />
 
-      {/* Top label */}
       <View style={[styles.topBadge, { top: insets.top + (Platform.OS === "web" ? 67 : 16) }]}>
         <View style={styles.topBadgeInner}>
           <View style={styles.pulseDot} />
@@ -95,12 +105,10 @@ export default function ActiveTripScreen() {
         </View>
       </View>
 
-      {/* Bottom panel */}
       <View style={[styles.bottomPanel, { paddingBottom: bottomPad }]}>
         <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.handleBar} />
 
-          {/* Customer info */}
           <View style={styles.customerRow}>
             <View style={styles.customerAvatar}>
               <Text style={styles.customerInitial}>{activeTrip.userName.charAt(0).toUpperCase()}</Text>
@@ -117,7 +125,6 @@ export default function ActiveTripScreen() {
             </Pressable>
           </View>
 
-          {/* Request details */}
           <View style={styles.detailsCard}>
             <View style={styles.detailRow}>
               <View style={styles.detailIcon}>
@@ -148,36 +155,28 @@ export default function ActiveTripScreen() {
             </View>
           </View>
 
-          {/* Complete trip */}
-          <View style={styles.completeCard}>
-            <Text style={styles.completeTitle}>Complete Trip</Text>
-            <Text style={styles.completeSubtitle}>Enter the agreed amount before completing</Text>
-            <View style={styles.amountRow}>
-              <Text style={styles.currencyLabel}>GHS</Text>
-              <TextInput
-                style={styles.amountInput}
-                placeholder="0"
-                placeholderTextColor={colors.mutedForeground}
-                keyboardType="numeric"
-                value={amount}
-                onChangeText={setAmount}
-              />
+          <View style={styles.fareCard}>
+            <View style={styles.fareRow}>
+              <View>
+                <Text style={styles.fareLabel}>Fare (1 GHS / km)</Text>
+                <Text style={styles.fareDistance}>{distanceKm.toFixed(2)} km travelled</Text>
+              </View>
+              <Text style={styles.fareAmount}>GHS {fare.toFixed(2)}</Text>
             </View>
+          </View>
+
+          <View style={styles.completeCard}>
             <Pressable
-              style={({ pressed }) => [
-                styles.completeBtn,
-                (!amount || parseFloat(amount) < 50) && styles.completeBtnDisabled,
-                pressed && { opacity: 0.88 },
-              ]}
+              style={({ pressed }) => [styles.completeBtn, pressed && { opacity: 0.88 }]}
               onPress={handleComplete}
-              disabled={!amount || parseFloat(amount) < 50 || isCompleting}
+              disabled={isCompleting}
             >
               {isCompleting ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <>
                   <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                  <Text style={styles.completeBtnText}>Complete Trip</Text>
+                  <Text style={styles.completeBtnText}>Complete Trip · GHS {fare.toFixed(2)}</Text>
                 </>
               )}
             </Pressable>
@@ -290,33 +289,22 @@ function makeStyles(colors: ReturnType<typeof useColors>, bottomPad: number) {
     },
     detailLabel: { fontSize: 11, color: colors.mutedForeground, marginBottom: 2 },
     detailValue: { fontSize: 14, color: colors.text, fontWeight: "500" as const },
-    completeCard: {
-      backgroundColor: colors.card,
+    fareCard: {
+      backgroundColor: colors.secondary,
       borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.border,
       padding: 16,
-      marginBottom: 8,
+      marginBottom: 12,
     },
-    completeTitle: { fontSize: 16, fontWeight: "700" as const, color: colors.text, marginBottom: 4 },
-    completeSubtitle: { fontSize: 13, color: colors.mutedForeground, marginBottom: 14 },
-    amountRow: {
+    fareRow: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: colors.muted,
-      borderRadius: 12,
-      paddingHorizontal: 14,
-      marginBottom: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
+      justifyContent: "space-between",
     },
-    currencyLabel: { fontSize: 18, fontWeight: "700" as const, color: colors.text, marginRight: 6 },
-    amountInput: {
-      flex: 1,
-      height: 54,
-      fontSize: 24,
-      fontWeight: "700" as const,
-      color: colors.text,
+    fareLabel: { fontSize: 12, color: "rgba(255,255,255,0.65)", marginBottom: 4 },
+    fareDistance: { fontSize: 13, color: "rgba(255,255,255,0.8)" },
+    fareAmount: { fontSize: 32, fontWeight: "700" as const, color: "#FFFFFF" },
+    completeCard: {
+      marginBottom: 8,
     },
     completeBtn: {
       backgroundColor: colors.success,
@@ -327,7 +315,6 @@ function makeStyles(colors: ReturnType<typeof useColors>, bottomPad: number) {
       justifyContent: "center",
       gap: 8,
     },
-    completeBtnDisabled: { backgroundColor: colors.mutedForeground },
     completeBtnText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" as const },
   });
 }

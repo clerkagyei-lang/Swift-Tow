@@ -4,5 +4,7 @@ buildCommand = "pnpm install --frozen-lockfile && PORT=3000 BASE_PATH=/admin-das
 
 [deploy]
 startCommand = "node --enable-source-maps ./artifacts/api-server/dist/index.mjs"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10

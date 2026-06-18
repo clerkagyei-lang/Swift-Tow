@@ -3,6 +3,31 @@ import { Server as SocketIOServer } from "socket.io";
 import { logger } from "./logger";
 import { store } from "./store";
 
+const RATE_PER_KM = 1;
+const MIN_FARE = 10;
+
+function haversineKm(
+  lat1: number, lon1: number,
+  lat2: number, lon2: number
+): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+
+function computeFare(
+  pickup: { latitude: number; longitude: number },
+  dropoff: { latitude: number; longitude: number }
+): number {
+  const distKm = haversineKm(pickup.latitude, pickup.longitude, dropoff.latitude, dropoff.longitude);
+  return Math.max(MIN_FARE, Math.round(distKm * RATE_PER_KM * 100) / 100);
+}
+
 let io: SocketIOServer | null = null;
 
 export function initSocket(httpServer: HttpServer): SocketIOServer {
@@ -57,32 +82,37 @@ export function initSocket(httpServer: HttpServer): SocketIOServer {
       }
     });
 
-    socket.on("request:complete", ({ requestId, amount }: { requestId: string; amount: number }) => {
-      const req = store.updateTowRequest(requestId, {
-        status: "completed",
-        amount,
-      });
-      if (req && req.driverId) {
-        const driver = store.drivers.get(req.driverId);
-        if (driver) {
+    socket.on("request:complete", ({ requestId }: { requestId: string; amount?: number }) => {
+      const req = store.towRequests.get(requestId);
+      if (!req || !req.driverId) return;
+
+      const driver = store.drivers.get(req.driverId);
+      const dropoff = driver?.currentLocation ?? req.pickupLocation;
+      const amount = computeFare(req.pickupLocation, dropoff);
+
+      const updated = store.updateTowRequest(requestId, { status: "completed", amount });
+      if (updated && updated.driverId) {
+        const d = store.drivers.get(updated.driverId);
+        if (d) {
           store.createTrip({
             towRequestId: requestId,
-            userId: req.userId,
-            driverId: req.driverId,
-            driverName: driver.name,
-            pickupAddress: req.pickupAddress,
-            dropoffAddress: req.dropoffAddress,
-            vehicleDetails: req.vehicleDetails,
-            towType: req.towType,
+            userId: updated.userId,
+            driverId: updated.driverId,
+            driverName: d.name,
+            pickupAddress: updated.pickupAddress,
+            dropoffAddress: updated.dropoffAddress,
+            vehicleDetails: updated.vehicleDetails,
+            towType: updated.towType,
             amount,
             paymentMethod: null,
             paymentStatus: "pending",
             completedAt: new Date().toISOString(),
           });
-          store.drivers.set(req.driverId, { ...driver, activeJobId: null });
+          store.drivers.set(updated.driverId, { ...d, activeJobId: null });
         }
-        io?.to(`user:${req.userId}`).emit("request:completed", { requestId, amount });
-        io?.emit("request:status:update", req);
+        io?.to(`user:${updated.userId}`).emit("request:completed", { requestId, amount });
+        io?.emit("request:status:update", updated);
+        logger.info({ requestId, amount, distKm: haversineKm(updated.pickupLocation.latitude, updated.pickupLocation.longitude, dropoff.latitude, dropoff.longitude).toFixed(2) }, "Trip completed");
       }
     });
 
