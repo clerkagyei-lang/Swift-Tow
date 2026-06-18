@@ -3,7 +3,7 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 
-const API_DOMAIN = process.env.EXPO_PUBLIC_DOMAIN ?? "localhost";
+const API_DOMAIN = process.env.EXPO_PUBLIC_DOMAIN ?? "swift-tow-truck-api-server.vercel.app";
 setBaseUrl(`https://${API_DOMAIN}`);
 
 interface User {
@@ -14,7 +14,6 @@ interface User {
   role: "user" | "driver" | "admin";
   avatarUrl: string | null;
   createdAt: string;
-  approvalStatus?: "pending" | "approved" | "suspended";
 }
 
 interface AuthContextType {

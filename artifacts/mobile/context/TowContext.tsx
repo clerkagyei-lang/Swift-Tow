@@ -43,13 +43,6 @@ export function TowProvider({ userId, children }: { userId: string | null; child
   const [driverLocation, setDriverLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
-  // Refs to avoid stale closures in socket callbacks
-  const activeRequestRef = useRef<TowRequest | null>(null);
-  const towStatusRef = useRef<TowStatus>("idle");
-
-  useEffect(() => { activeRequestRef.current = activeRequest; }, [activeRequest]);
-  useEffect(() => { towStatusRef.current = towStatus; }, [towStatus]);
-
   useEffect(() => {
     if (!userId) return;
 
@@ -69,10 +62,7 @@ export function TowProvider({ userId, children }: { userId: string | null; child
     });
 
     socket.on("driver:location:update", ({ driverId, location }: { driverId: string; location: { latitude: number; longitude: number } }) => {
-      // Use refs so we always read the current status — not a stale closure value
-      const status = towStatusRef.current;
-      const req = activeRequestRef.current;
-      if (req?.driverId === driverId || status === "accepted" || status === "in_progress") {
+      if (activeRequest?.driverId === driverId || towStatus === "accepted" || towStatus === "in_progress") {
         setDriverLocation(location);
       }
     });

@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { loadGoogleMaps } from "@/lib/googleMapsLoader";
+import React, { useEffect, useRef } from "react";
+import { StyleSheet, View } from "react-native";
 
 interface Props {
   driverLocation: { latitude: number; longitude: number } | null;
@@ -11,229 +10,184 @@ interface Props {
 
 const ACCRA = { lat: 5.6037, lng: -0.187 };
 
+function loadLeaflet(): Promise<any> {
+  return new Promise((resolve) => {
+    const w = window as any;
+    if (w.L) { resolve(w.L); return; }
+
+    if (!document.getElementById("leaflet-css")) {
+      const link = document.createElement("link");
+      link.id = "leaflet-css";
+      link.rel = "stylesheet";
+      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+      document.head.appendChild(link);
+    }
+
+    if (!document.getElementById("leaflet-js")) {
+      const script = document.createElement("script");
+      script.id = "leaflet-js";
+      script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+      script.onload = () => resolve(w.L);
+      document.head.appendChild(script);
+    } else {
+      const interval = setInterval(() => {
+        if (w.L) { clearInterval(interval); resolve(w.L); }
+      }, 50);
+    }
+  });
+}
+
 export default function DriverMapComponent({ driverLocation, requestLocation, colors }: Props) {
   const divRef = useRef<HTMLDivElement | null>(null);
-  const mapRef2 = useRef<google.maps.Map | null>(null);
-  const driverMarkerRef = useRef<google.maps.Marker | null>(null);
-  const pickupMarkerRef = useRef<google.maps.Marker | null>(null);
-  const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
-  const directionsServiceRef = useRef<google.maps.DirectionsService | null>(null);
-  const routeRequestRef = useRef<string>("");
-  const [error, setError] = useState<string | null>(null);
+  const mapRef2 = useRef<any>(null);
+  const driverMarkerRef = useRef<any>(null);
+  const pickupMarkerRef = useRef<any>(null);
+  const routeLineRef = useRef<any>(null);
 
-  function makeTruckIcon(maps: typeof google.maps, bg: string) {
-    return {
-      url: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 48 48'><circle cx='24' cy='24' r='24' fill='${encodeURIComponent(bg)}'/><path d='M34 18h-5l-2-6H13c-1.66 0-3 1.34-3 3v13h3c0 2.48 2.02 4.5 4.5 4.5S22 30.48 22 28h6c0 2.48 2.02 4.5 4.5 4.5S37 30.48 37 28h3v-6l-4-4h-2zm-15.5 12c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm14 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM33 23v-3.5h3.5l2.46 3.5H33z' fill='white'/></svg>`,
-      scaledSize: new maps.Size(48, 48),
-      anchor: new maps.Point(24, 24),
-    };
-  }
-
-  function makePickupIcon(maps: typeof google.maps) {
-    return {
-      url: `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='40' viewBox='0 0 32 40'><path d='M16 0C7.16 0 0 7.16 0 16c0 11 16 24 16 24S32 27 32 16C32 7.16 24.84 0 16 0z' fill='${encodeURIComponent(colors.primary)}'/><circle cx='16' cy='16' r='7' fill='white'/></svg>`,
-      scaledSize: new maps.Size(32, 40),
-      anchor: new maps.Point(16, 40),
-    };
-  }
-
-  function requestRoute(
-    maps: typeof google.maps,
-    map: google.maps.Map,
-    origin: google.maps.LatLngLiteral,
-    destination: google.maps.LatLngLiteral
-  ) {
-    const key = `${origin.lat},${origin.lng}->${destination.lat},${destination.lng}`;
-    if (routeRequestRef.current === key) return;
-    routeRequestRef.current = key;
-
-    if (!directionsServiceRef.current) {
-      directionsServiceRef.current = new maps.DirectionsService();
-    }
-    if (!directionsRendererRef.current) {
-      directionsRendererRef.current = new maps.DirectionsRenderer({
-        map,
-        suppressMarkers: true,
-        polylineOptions: {
-          strokeColor: colors.primary,
-          strokeWeight: 4,
-          strokeOpacity: 0.85,
-        },
-      });
-    }
-
-    directionsServiceRef.current.route(
-      {
-        origin,
-        destination,
-        travelMode: maps.TravelMode.DRIVING,
-      },
-      (result, status) => {
-        if (status === maps.DirectionsStatus.OK && result) {
-          directionsRendererRef.current?.setDirections(result);
-          const leg = result.routes[0]?.legs[0];
-          if (leg) {
-            const bounds = new maps.LatLngBounds();
-            bounds.extend(origin);
-            bounds.extend(destination);
-            map.fitBounds(bounds, 80);
-          }
-        } else {
-          // Fallback: draw straight dashed line if Directions fails
-          directionsRendererRef.current?.setMap(null);
-          directionsRendererRef.current = null;
-        }
-      }
-    );
-  }
-
-  function clearRoute() {
-    if (directionsRendererRef.current) {
-      directionsRendererRef.current.setMap(null);
-      directionsRendererRef.current = null;
-    }
-    routeRequestRef.current = "";
-  }
-
-  // Initial map load
   useEffect(() => {
     let cancelled = false;
 
-    loadGoogleMaps()
-      .then((maps) => {
-        if (cancelled || !divRef.current || mapRef2.current) return;
+    (async () => {
+      const L = await loadLeaflet();
+      if (cancelled || !divRef.current || mapRef2.current) return;
 
-        const lat = driverLocation?.latitude ?? ACCRA.lat;
-        const lng = driverLocation?.longitude ?? ACCRA.lng;
+      const lat = driverLocation?.latitude ?? ACCRA.lat;
+      const lng = driverLocation?.longitude ?? ACCRA.lng;
 
-        const map = new maps.Map(divRef.current, {
-          center: { lat, lng },
-          zoom: 14,
-          zoomControl: true,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-          styles: [
-            { featureType: "poi", stylers: [{ visibility: "off" }] },
-            { featureType: "transit", stylers: [{ visibility: "simplified" }] },
-          ],
-        });
-        mapRef2.current = map;
-
-        if (driverLocation) {
-          driverMarkerRef.current = new maps.Marker({
-            map,
-            position: { lat, lng },
-            icon: makeTruckIcon(maps, colors.secondary),
-            title: "You",
-            zIndex: 10,
-          });
-        }
-
-        if (requestLocation) {
-          const reqPos = { lat: requestLocation.latitude, lng: requestLocation.longitude };
-          pickupMarkerRef.current = new maps.Marker({
-            map,
-            position: reqPos,
-            icon: makePickupIcon(maps),
-            title: "Pickup",
-            zIndex: 9,
-          });
-
-          if (driverLocation) {
-            requestRoute(maps, map, { lat, lng }, reqPos);
-          } else {
-            map.panTo(reqPos);
-          }
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) setError(String(err.message));
+      const map = L.map(divRef.current, {
+        center: [lat, lng],
+        zoom: 14,
+        zoomControl: true,
+        attributionControl: true,
       });
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors",
+        maxZoom: 19,
+      }).addTo(map);
+
+      // Driver truck marker
+      const truckIcon = L.divIcon({
+        html: `<div style="width:48px;height:48px;border-radius:50%;background:${colors.secondary};border:3px solid white;box-shadow:0 3px 10px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
+                   <path d="M20 8h-3L15 4H5c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h4c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM8 18c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm9 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-7V9.5h2.5l1.96 2.5H16z"/>
+                 </svg>
+               </div>`,
+        className: "",
+        iconSize: [48, 48],
+        iconAnchor: [24, 24],
+      });
+
+      if (driverLocation) {
+        driverMarkerRef.current = L.marker([lat, lng], { icon: truckIcon }).addTo(map);
+      }
+
+      mapRef2.current = map;
+
+      // Trigger request marker if already set
+      if (requestLocation) {
+        updatePickup(L, map, requestLocation, driverLocation);
+      }
+    })();
 
     return () => { cancelled = true; };
   }, []);
 
-  // Update driver position + route when driver moves
-  useEffect(() => {
-    const maps = (window as any).google?.maps as typeof google.maps | undefined;
-    const map = mapRef2.current;
-    if (!maps || !map || !driverLocation) return;
+  function updatePickup(
+    L: any, map: any,
+    req: { latitude: number; longitude: number },
+    drv: { latitude: number; longitude: number } | null
+  ) {
+    const pickupIcon = L.divIcon({
+      html: `<div style="display:flex;flex-direction:column;align-items:center">
+               <div style="width:14px;height:14px;border-radius:50%;background:${colors.primary};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>
+               <div style="width:2px;height:10px;background:${colors.primary}"></div>
+             </div>`,
+      className: "",
+      iconSize: [14, 24],
+      iconAnchor: [7, 24],
+    });
 
-    const pos = { lat: driverLocation.latitude, lng: driverLocation.longitude };
+    if (pickupMarkerRef.current) {
+      pickupMarkerRef.current.setLatLng([req.latitude, req.longitude]);
+    } else {
+      pickupMarkerRef.current = L.marker([req.latitude, req.longitude], { icon: pickupIcon }).addTo(map);
+    }
+
+    // Dashed route line
+    if (drv) {
+      if (routeLineRef.current) {
+        map.removeLayer(routeLineRef.current);
+      }
+      routeLineRef.current = L.polyline(
+        [[drv.latitude, drv.longitude], [req.latitude, req.longitude]],
+        { color: colors.primary, weight: 3, dashArray: "8 6", opacity: 0.7 }
+      ).addTo(map);
+
+      const bounds = L.latLngBounds([
+        [drv.latitude, drv.longitude],
+        [req.latitude, req.longitude],
+      ]);
+      map.fitBounds(bounds, { padding: [80, 80], animate: true });
+    } else {
+      map.panTo([req.latitude, req.longitude], { animate: true });
+    }
+  }
+
+  // Driver location updates
+  useEffect(() => {
+    const L = (window as any).L;
+    const map = mapRef2.current;
+    if (!L || !map || !driverLocation) return;
 
     if (driverMarkerRef.current) {
-      driverMarkerRef.current.setPosition(pos);
+      driverMarkerRef.current.setLatLng([driverLocation.latitude, driverLocation.longitude]);
     } else {
-      driverMarkerRef.current = new maps.Marker({
-        map,
-        position: pos,
-        icon: makeTruckIcon(maps, colors.secondary),
-        title: "You",
-        zIndex: 10,
+      const truckIcon = L.divIcon({
+        html: `<div style="width:48px;height:48px;border-radius:50%;background:${colors.secondary};border:3px solid white;box-shadow:0 3px 10px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="white">
+                   <path d="M20 8h-3L15 4H5c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h4c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM8 18c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-7V9.5h2.5l1.96 2.5H16z"/>
+                 </svg>
+               </div>`,
+        className: "",
+        iconSize: [48, 48],
+        iconAnchor: [24, 24],
       });
+      driverMarkerRef.current = L.marker([driverLocation.latitude, driverLocation.longitude], { icon: truckIcon }).addTo(map);
     }
 
     if (requestLocation) {
-      const reqPos = { lat: requestLocation.latitude, lng: requestLocation.longitude };
-      requestRoute(maps, map, pos, reqPos);
+      if (routeLineRef.current) map.removeLayer(routeLineRef.current);
+      routeLineRef.current = L.polyline(
+        [[driverLocation.latitude, driverLocation.longitude], [requestLocation.latitude, requestLocation.longitude]],
+        { color: colors.primary, weight: 3, dashArray: "8 6", opacity: 0.7 }
+      ).addTo(map);
     } else {
-      map.panTo(pos);
+      map.panTo([driverLocation.latitude, driverLocation.longitude], { animate: true });
     }
   }, [driverLocation]);
 
-  // Update pickup marker + route when request changes
+  // Request location updates
   useEffect(() => {
-    const maps = (window as any).google?.maps as typeof google.maps | undefined;
+    const L = (window as any).L;
     const map = mapRef2.current;
-    if (!maps || !map) return;
+    if (!L || !map) return;
 
     if (requestLocation) {
-      const reqPos = { lat: requestLocation.latitude, lng: requestLocation.longitude };
-
-      if (pickupMarkerRef.current) {
-        pickupMarkerRef.current.setPosition(reqPos);
-      } else {
-        pickupMarkerRef.current = new maps.Marker({
-          map,
-          position: reqPos,
-          icon: makePickupIcon(maps),
-          title: "Pickup",
-          zIndex: 9,
-        });
-      }
-
-      if (driverLocation) {
-        const drvPos = { lat: driverLocation.latitude, lng: driverLocation.longitude };
-        requestRoute(maps, map, drvPos, reqPos);
-      } else {
-        map.panTo(reqPos);
-      }
-    } else {
-      pickupMarkerRef.current?.setMap(null);
+      updatePickup(L, map, requestLocation, driverLocation);
+    } else if (pickupMarkerRef.current) {
+      map.removeLayer(pickupMarkerRef.current);
       pickupMarkerRef.current = null;
-      clearRoute();
+      if (routeLineRef.current) { map.removeLayer(routeLineRef.current); routeLineRef.current = null; }
     }
   }, [requestLocation]);
 
-  if (error) {
-    return (
-      <View style={[StyleSheet.absoluteFill, styles.errorBox]}>
-        <Text style={styles.errorText}>Map unavailable</Text>
-        <Text style={styles.errorSub}>{error}</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={StyleSheet.absoluteFill}>
-      <div ref={divRef} style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} />
+      <div
+        ref={divRef}
+        style={{ position: "absolute", inset: 0, zIndex: 0 }}
+      />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  errorBox: { backgroundColor: "#f0f0f0", alignItems: "center", justifyContent: "center", padding: 24 },
-  errorText: { fontSize: 16, fontWeight: "600", color: "#333", marginBottom: 4 },
-  errorSub: { fontSize: 12, color: "#666", textAlign: "center" },
-});

@@ -49,7 +49,7 @@ export default function LoginScreen() {
         return;
       }
       await login(data.token, data.user);
-      // routing handled by _layout based on role + approvalStatus
+      router.replace("/(tabs)");
     } catch {
       setError("Network error. Please try again.");
     } finally {
@@ -141,16 +141,6 @@ export default function LoginScreen() {
               <Text style={styles.registerHighlight}>Sign Up</Text>
             </Text>
           </Pressable>
-
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <Pressable onPress={() => router.push("/auth/register-driver")} style={styles.driverLink}>
-            <Text style={styles.driverLinkText}>Register as a Driver</Text>
-          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -222,10 +212,5 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     registerLink: { alignItems: "center" },
     registerText: { fontSize: 14, color: colors.mutedForeground },
     registerHighlight: { color: colors.primary, fontWeight: "600" as const },
-    divider: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 12 },
-    dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
-    dividerText: { fontSize: 12, color: colors.mutedForeground },
-    driverLink: { alignItems: "center", paddingVertical: 4 },
-    driverLinkText: { fontSize: 14, color: colors.primary, fontWeight: "600" as const },
   });
 }
