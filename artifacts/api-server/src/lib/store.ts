@@ -42,6 +42,7 @@ export interface TowRequest {
   status: "pending" | "accepted" | "in_progress" | "completed" | "cancelled";
   pickupLocation: { latitude: number; longitude: number };
   pickupAddress: string;
+  dropoffLocation: { latitude: number; longitude: number } | null;
   dropoffAddress: string | null;
   vehicleDetails: string;
   driverId: string | null;

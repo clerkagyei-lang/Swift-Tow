@@ -3,6 +3,7 @@ import { StyleSheet, View } from "react-native";
 
 interface Props {
   location: { latitude: number; longitude: number } | null;
+  dropoffLocation?: { latitude: number; longitude: number } | null;
   driverLocation: { latitude: number; longitude: number } | null;
   mapRef: React.RefObject<any>;
   colors: { primary: string; secondary: string };
@@ -38,14 +39,15 @@ function loadLeaflet(): Promise<any> {
   });
 }
 
-export default function MapComponent({ location, driverLocation, colors }: Props) {
+export default function MapComponent({ location, dropoffLocation, driverLocation, colors }: Props) {
   const divRef = useRef<HTMLDivElement | null>(null);
   const mapRef2 = useRef<any>(null);
   const userMarkerRef = useRef<any>(null);
   const circleRef = useRef<any>(null);
   const driverMarkerRef = useRef<any>(null);
+  const dropoffMarkerRef = useRef<any>(null);
+  const routeLineRef = useRef<any>(null);
 
-  // Initialise map once
   useEffect(() => {
     let cancelled = false;
 
@@ -68,7 +70,6 @@ export default function MapComponent({ location, driverLocation, colors }: Props
         maxZoom: 19,
       }).addTo(map);
 
-      // Accuracy circle
       circleRef.current = L.circle([lat, lng], {
         radius: 80,
         color: colors.primary,
@@ -78,7 +79,6 @@ export default function MapComponent({ location, driverLocation, colors }: Props
         opacity: 0.5,
       }).addTo(map);
 
-      // User location dot
       const userIcon = L.divIcon({
         html: `<div style="width:18px;height:18px;border-radius:50%;background:#4A90E2;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div>`,
         className: "",
@@ -86,19 +86,70 @@ export default function MapComponent({ location, driverLocation, colors }: Props
         iconAnchor: [9, 9],
       });
       userMarkerRef.current = L.marker([lat, lng], { icon: userIcon }).addTo(map);
-
       mapRef2.current = map;
 
-      // Trigger driver marker update if already set
       if (driverLocation) {
         addOrMoveDriver(L, map, driverLocation, location);
+      }
+      if (dropoffLocation) {
+        addOrMoveDropoff(L, map, dropoffLocation, location);
       }
     })();
 
     return () => { cancelled = true; };
   }, []);
 
-  function addOrMoveDriver(L: any, map: any, dl: { latitude: number; longitude: number }, ul: { latitude: number; longitude: number } | null) {
+  function makeDropoffIcon(L: any) {
+    return L.divIcon({
+      html: `<div style="display:flex;flex-direction:column;align-items:center">
+               <div style="width:28px;height:28px;border-radius:50%;background:${colors.primary};border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+               </div>
+               <div style="width:2px;height:10px;background:${colors.primary};opacity:0.7"></div>
+             </div>`,
+      className: "",
+      iconSize: [28, 40],
+      iconAnchor: [14, 40],
+    });
+  }
+
+  function addOrMoveDropoff(
+    L: any,
+    map: any,
+    dl: { latitude: number; longitude: number },
+    ul: { latitude: number; longitude: number } | null
+  ) {
+    if (dropoffMarkerRef.current) {
+      dropoffMarkerRef.current.setLatLng([dl.latitude, dl.longitude]);
+    } else {
+      dropoffMarkerRef.current = L.marker([dl.latitude, dl.longitude], {
+        icon: makeDropoffIcon(L),
+      }).addTo(map);
+    }
+
+    if (routeLineRef.current) {
+      map.removeLayer(routeLineRef.current);
+    }
+    if (ul) {
+      routeLineRef.current = L.polyline(
+        [[ul.latitude, ul.longitude], [dl.latitude, dl.longitude]],
+        { color: colors.primary, weight: 3, opacity: 0.6, dashArray: "8 6" }
+      ).addTo(map);
+
+      const bounds = L.latLngBounds([
+        [ul.latitude, ul.longitude],
+        [dl.latitude, dl.longitude],
+      ]);
+      map.fitBounds(bounds, { padding: [80, 80], animate: true });
+    }
+  }
+
+  function addOrMoveDriver(
+    L: any,
+    map: any,
+    dl: { latitude: number; longitude: number },
+    ul: { latitude: number; longitude: number } | null
+  ) {
     const driverIcon = L.divIcon({
       html: `<div style="width:44px;height:44px;border-radius:50%;background:${colors.secondary};border:3px solid white;box-shadow:0 3px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center">
                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="white">
@@ -125,7 +176,6 @@ export default function MapComponent({ location, driverLocation, colors }: Props
     }
   }
 
-  // Update user location
   useEffect(() => {
     const L = (window as any).L;
     const map = mapRef2.current;
@@ -133,12 +183,34 @@ export default function MapComponent({ location, driverLocation, colors }: Props
     const { latitude: lat, longitude: lng } = location;
     userMarkerRef.current?.setLatLng([lat, lng]);
     circleRef.current?.setLatLng([lat, lng]);
-    if (!driverLocation) {
+    if (!driverLocation && !dropoffLocation) {
       map.panTo([lat, lng], { animate: true, duration: 0.8 });
+    }
+    if (dropoffLocation) {
+      addOrMoveDropoff(L, map, dropoffLocation, location);
     }
   }, [location]);
 
-  // Update driver location
+  useEffect(() => {
+    const L = (window as any).L;
+    const map = mapRef2.current;
+    if (!L || !map) return;
+
+    if (dropoffLocation) {
+      addOrMoveDropoff(L, map, dropoffLocation, location);
+    } else {
+      if (dropoffMarkerRef.current) {
+        map.removeLayer(dropoffMarkerRef.current);
+        dropoffMarkerRef.current = null;
+      }
+      if (routeLineRef.current) {
+        map.removeLayer(routeLineRef.current);
+        routeLineRef.current = null;
+      }
+      if (location) map.panTo([location.latitude, location.longitude], { animate: true });
+    }
+  }, [dropoffLocation]);
+
   useEffect(() => {
     const L = (window as any).L;
     const map = mapRef2.current;

@@ -4,7 +4,6 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -17,13 +16,15 @@ import { useAuth } from "@/context/AuthContext";
 import { useTow } from "@/context/TowContext";
 import { useColors } from "@/hooks/useColors";
 import MapComponent from "@/components/MapComponent";
+import LocationSearchInput, { type SelectedLocation } from "@/components/LocationSearchInput";
+import { haversineKm, computeFare } from "@/context/DriverContext";
 
 type TowType = "flatbed" | "hook_chain" | "repair";
 
-const TOW_TYPES: { id: TowType; label: string; icon: string; desc: string; price: string }[] = [
-  { id: "flatbed", label: "Flatbed", icon: "truck-flatbed", desc: "Best for luxury & AWD", price: "GHS 200–300" },
-  { id: "hook_chain", label: "Hook & Chain", icon: "car-traction-control", desc: "Standard tow", price: "GHS 120–180" },
-  { id: "repair", label: "Repair", icon: "wrench", desc: "On-site assistance", price: "GHS 80–150" },
+const TOW_TYPES: { id: TowType; label: string; icon: string; desc: string }[] = [
+  { id: "flatbed", label: "Flatbed", icon: "truck-flatbed", desc: "Luxury & AWD" },
+  { id: "hook_chain", label: "Hook & Chain", icon: "car-traction-control", desc: "Standard tow" },
+  { id: "repair", label: "Repair", icon: "wrench", desc: "On-site fix" },
 ];
 
 const ACCRA = { latitude: 5.6037, longitude: -0.187 };
@@ -36,8 +37,10 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { towStatus, setTowStatus, setActiveRequest, driverLocation } = useTow();
 
-  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [address, setAddress] = useState("Locating you...");
+  const [pickupLocation, setPickupLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [pickupAddress, setPickupAddress] = useState("Locating you...");
+  const [dropoffLocation, setDropoffLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [dropoffAddress, setDropoffAddress] = useState("");
   const [selectedTow, setSelectedTow] = useState<TowType>("flatbed");
   const [isSearching, setIsSearching] = useState(false);
   const mapRef = useRef<any>(null);
@@ -53,36 +56,36 @@ export default function HomeScreen() {
 
     (async () => {
       if (Platform.OS === "web") {
-        setLocation(ACCRA);
-        setAddress("Accra, Greater Accra Region, Ghana");
+        setPickupLocation(ACCRA);
+        setPickupAddress("Accra, Greater Accra Region, Ghana");
         return;
       }
 
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        setLocation(ACCRA);
-        setAddress("Accra, Ghana");
+        setPickupLocation(ACCRA);
+        setPickupAddress("Accra, Ghana");
         return;
       }
 
       const initial = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const { latitude, longitude } = initial.coords;
-      setLocation({ latitude, longitude });
+      setPickupLocation({ latitude, longitude });
 
       try {
         const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
         if (geo[0]) {
           const g = geo[0];
-          setAddress([g.street, g.district, g.city].filter(Boolean).join(", ") || "Current Location");
+          setPickupAddress([g.street, g.district, g.city].filter(Boolean).join(", ") || "Current Location");
         }
       } catch {
-        setAddress("Current Location");
+        setPickupAddress("Current Location");
       }
 
       sub = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, timeInterval: 4000, distanceInterval: 8 },
         (pos) => {
-          setLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+          setPickupLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
         }
       );
     })();
@@ -90,8 +93,23 @@ export default function HomeScreen() {
     return () => { sub?.remove(); };
   }, []);
 
+  const estimatedDistanceKm =
+    pickupLocation && dropoffLocation
+      ? haversineKm(
+          pickupLocation.latitude,
+          pickupLocation.longitude,
+          dropoffLocation.latitude,
+          dropoffLocation.longitude
+        )
+      : null;
+
+  const estimatedFare =
+    pickupLocation && dropoffLocation
+      ? computeFare(pickupLocation, dropoffLocation)
+      : null;
+
   const handleConfirmRequest = async () => {
-    if (!user || !location) return;
+    if (!user || !pickupLocation) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsSearching(true);
     setTowStatus("searching");
@@ -106,8 +124,10 @@ export default function HomeScreen() {
           userName: user.name,
           userPhone: user.phone,
           towType: selectedTow,
-          pickupLocation: location,
-          pickupAddress: address,
+          pickupLocation,
+          pickupAddress,
+          dropoffLocation: dropoffLocation ?? null,
+          dropoffAddress: dropoffAddress || null,
           vehicleDetails: "My Vehicle",
         }),
       });
@@ -134,6 +154,16 @@ export default function HomeScreen() {
     setTowStatus("idle");
   };
 
+  const handlePickupSelect = (loc: SelectedLocation) => {
+    setPickupLocation({ latitude: loc.latitude, longitude: loc.longitude });
+    setPickupAddress(loc.address);
+  };
+
+  const handleDropoffSelect = (loc: SelectedLocation) => {
+    setDropoffLocation({ latitude: loc.latitude, longitude: loc.longitude });
+    setDropoffAddress(loc.address);
+  };
+
   const bottomPad = insets.bottom + TAB_BAR_HEIGHT;
   const styles = makeStyles(colors, bottomPad);
 
@@ -141,20 +171,20 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <MapComponent
         mapRef={mapRef}
-        location={location}
+        location={pickupLocation}
+        dropoffLocation={dropoffLocation}
         driverLocation={driverLocation}
         colors={colors}
         followUser={!driverLocation}
       />
 
-      {/* Top bar */}
       <View style={[styles.topBar, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 10) }]}>
         <View style={styles.greetingRow}>
           <View style={{ flex: 1 }}>
             <Text style={styles.greeting}>Hi, {user?.name?.split(" ")[0]}</Text>
             <View style={styles.locationRow}>
               <Ionicons name="location-sharp" size={13} color={colors.primary} />
-              <Text style={styles.locationText} numberOfLines={1}>{address}</Text>
+              <Text style={styles.locationText} numberOfLines={1}>{pickupAddress}</Text>
             </View>
           </View>
           <Pressable onPress={() => router.push("/help")} style={styles.helpBtn}>
@@ -163,14 +193,51 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Bottom panel — scrollable so confirm button is always reachable */}
       <View style={styles.bottomPanel}>
         <ScrollView
-          scrollEnabled={false}
           contentContainerStyle={styles.panelContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.handleBar} />
+
+          {/* Route card */}
+          <View style={styles.routeCard}>
+            <View style={styles.routeRow}>
+              <Text style={styles.routeLabel}>Pickup</Text>
+              <LocationSearchInput
+                label="pickup"
+                iconColor="#4A90E2"
+                value={pickupAddress}
+                onSelect={handlePickupSelect}
+                placeholder="Search pickup location..."
+              />
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.routeRow}>
+              <Text style={styles.routeLabel}>Drop-off</Text>
+              <LocationSearchInput
+                label="drop-off"
+                iconColor={colors.primary}
+                value={dropoffAddress}
+                onSelect={handleDropoffSelect}
+                onClear={() => { setDropoffLocation(null); setDropoffAddress(""); }}
+                placeholder="Where to? (optional)"
+              />
+            </View>
+          </View>
+
+          {/* Fare estimate */}
+          {estimatedFare !== null && estimatedDistanceKm !== null && (
+            <View style={styles.fareEstimate}>
+              <View style={styles.fareLeft}>
+                <Ionicons name="speedometer-outline" size={16} color={colors.primary} />
+                <Text style={styles.fareDistText}>{estimatedDistanceKm.toFixed(1)} km</Text>
+              </View>
+              <Text style={styles.fareText}>Est. GHS {estimatedFare.toFixed(2)}</Text>
+            </View>
+          )}
+
           <Text style={styles.panelTitle}>Select Tow Type</Text>
 
           <View style={styles.towTypes}>
@@ -188,7 +255,7 @@ export default function HomeScreen() {
                 <Text style={[styles.towLabel, selectedTow === type.id && styles.towLabelActive]}>
                   {type.label}
                 </Text>
-                <Text style={styles.towPrice}>{type.price}</Text>
+                <Text style={styles.towDesc}>{type.desc}</Text>
               </Pressable>
             ))}
           </View>
@@ -196,23 +263,27 @@ export default function HomeScreen() {
           <Pressable
             style={({ pressed }) => [
               styles.confirmBtn,
-              (isSearching || !location) && styles.confirmBtnDisabled,
+              (isSearching || !pickupLocation) && styles.confirmBtnDisabled,
               pressed && !isSearching && { opacity: 0.88 },
             ]}
             onPress={handleConfirmRequest}
-            disabled={isSearching || !location}
+            disabled={isSearching || !pickupLocation}
           >
-            {isSearching ? (
-              <View style={styles.confirmBtnContent}>
-                <ActivityIndicator color="#fff" size="small" />
-                <Text style={styles.confirmBtnText}>Finding Driver...</Text>
-              </View>
-            ) : (
-              <View style={styles.confirmBtnContent}>
-                <Ionicons name="navigate" size={18} color="#fff" />
-                <Text style={styles.confirmBtnText}>Request Tow</Text>
-              </View>
-            )}
+            <View style={styles.confirmBtnContent}>
+              {isSearching ? (
+                <>
+                  <Ionicons name="radio-button-on" size={18} color="#fff" />
+                  <Text style={styles.confirmBtnText}>Finding Driver...</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="navigate" size={18} color="#fff" />
+                  <Text style={styles.confirmBtnText}>
+                    Request Tow{estimatedFare !== null ? `  ·  GHS ${estimatedFare.toFixed(2)}` : ""}
+                  </Text>
+                </>
+              )}
+            </View>
           </Pressable>
 
           {isSearching && (
@@ -270,6 +341,7 @@ function makeStyles(colors: ReturnType<typeof useColors>, bottomPad: number) {
       backgroundColor: colors.card,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
+      maxHeight: "72%",
       shadowColor: "#000",
       shadowOffset: { width: 0, height: -4 },
       shadowOpacity: 0.1,
@@ -289,7 +361,42 @@ function makeStyles(colors: ReturnType<typeof useColors>, bottomPad: number) {
       alignSelf: "center",
       marginBottom: 14,
     },
-    panelTitle: { fontSize: 15, fontWeight: "700" as const, color: colors.text, marginBottom: 12 },
+    routeCard: {
+      backgroundColor: colors.muted,
+      borderRadius: 16,
+      paddingHorizontal: 14,
+      marginBottom: 10,
+    },
+    routeRow: {
+      paddingVertical: 2,
+    },
+    routeLabel: {
+      fontSize: 10,
+      fontWeight: "600" as const,
+      color: colors.mutedForeground,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginTop: 8,
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: colors.border,
+      marginLeft: 20,
+    },
+    fareEstimate: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: colors.accent,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      marginBottom: 12,
+    },
+    fareLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
+    fareDistText: { fontSize: 13, color: colors.primary, fontWeight: "600" as const },
+    fareText: { fontSize: 14, fontWeight: "700" as const, color: colors.primary },
+    panelTitle: { fontSize: 13, fontWeight: "700" as const, color: colors.mutedForeground, marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 },
     towTypes: { flexDirection: "row", gap: 10, marginBottom: 14 },
     towCard: {
       flex: 1,
@@ -304,7 +411,7 @@ function makeStyles(colors: ReturnType<typeof useColors>, bottomPad: number) {
     towCardActive: { borderColor: colors.primary, backgroundColor: colors.accent },
     towLabel: { fontSize: 11, fontWeight: "600" as const, color: colors.mutedForeground, textAlign: "center" },
     towLabelActive: { color: colors.primary },
-    towPrice: { fontSize: 10, color: colors.mutedForeground, textAlign: "center" },
+    towDesc: { fontSize: 10, color: colors.mutedForeground, textAlign: "center" },
     confirmBtn: {
       backgroundColor: colors.primary,
       borderRadius: 14,
@@ -314,7 +421,7 @@ function makeStyles(colors: ReturnType<typeof useColors>, bottomPad: number) {
     },
     confirmBtnDisabled: { backgroundColor: colors.mutedForeground },
     confirmBtnContent: { flexDirection: "row", alignItems: "center", gap: 8 },
-    confirmBtnText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" as const },
+    confirmBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" as const },
     cancelBtn: { alignItems: "center", paddingVertical: 12 },
     cancelText: { color: colors.destructive, fontWeight: "600" as const, fontSize: 14 },
   });

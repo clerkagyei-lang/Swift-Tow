@@ -5,7 +5,7 @@ import { getIO } from "../lib/socket";
 const router = Router();
 
 router.post("/tow-requests", (req, res) => {
-  const { userId, userName, userPhone, towType, pickupLocation, pickupAddress, dropoffAddress, vehicleDetails } = req.body;
+  const { userId, userName, userPhone, towType, pickupLocation, pickupAddress, dropoffLocation, dropoffAddress, vehicleDetails } = req.body;
 
   if (!userId || !userName || !userPhone || !towType || !pickupLocation || !pickupAddress || !vehicleDetails) {
     res.status(400).json({ error: "validation_error", message: "Missing required fields" });
@@ -20,6 +20,7 @@ router.post("/tow-requests", (req, res) => {
     status: "pending",
     pickupLocation,
     pickupAddress,
+    dropoffLocation: dropoffLocation ?? null,
     dropoffAddress: dropoffAddress || null,
     vehicleDetails,
     driverId: null,

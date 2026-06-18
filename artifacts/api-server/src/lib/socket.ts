@@ -87,7 +87,7 @@ export function initSocket(httpServer: HttpServer): SocketIOServer {
       if (!req || !req.driverId) return;
 
       const driver = store.drivers.get(req.driverId);
-      const dropoff = driver?.currentLocation ?? req.pickupLocation;
+      const dropoff = req.dropoffLocation ?? driver?.currentLocation ?? req.pickupLocation;
       const amount = computeFare(req.pickupLocation, dropoff);
 
       const updated = store.updateTowRequest(requestId, { status: "completed", amount });
