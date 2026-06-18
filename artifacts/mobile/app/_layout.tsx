@@ -33,8 +33,9 @@ function RootLayoutNav() {
     const inDriver = segments[0] === "(driver)";
     const inTabs = segments[0] === "(tabs)";
 
-    const [segment, subSegment] = useSegments(); // If useSegments returns an array of length 1
-// ... later using subSegment (which is undefined/index 1)
+const segments = useSegments();
+const segment = segments[0];
+const subSegment = segments[1] ?? 'default'; // Provide a fallback
     const inAdmin = segments[0] === "admin";
 
     if (!user && !inAuth) {
