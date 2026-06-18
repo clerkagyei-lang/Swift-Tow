@@ -4,59 +4,56 @@ function RootLayoutNav() {
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoading) return;
+  if (isLoading) return;
 
-    // Define route flags
-    const inAuth = segments[0] === "auth";
-    const inDriver = segments[0] === "(driver)";
-    const inTabs = segments[0] === "(tabs)";
-    const inAdmin = segments[0] === "admin";
-    // ADDED THIS: correctly define inPending
-    const inPending = segments[1] === "pending-approval"; 
+  const inAuth = segments[0] === "auth";
+  const inDriver = segments[0] === "(driver)";
+  const inTabs = segments[0] === "(tabs)";
+  const inAdmin = segments[0] === "admin";
+  const inPending = segments[1] === "pending-approval";
 
-    // Redirect to login if not authenticated
-    if (!user && !inAuth) {
-      router.replace("/auth/login" as any);
-      return;
-    }
+  // 1. If no user, must be in Auth
+  if (!user) {
+    if (!inAuth) router.replace("/auth/login" as any);
+    return;
+  }
 
-    // Handle authenticated users
-    if (user && inAuth && !inPending) {
-      if (user.role === "driver" && user.approvalStatus === "pending") {
-        router.replace("/auth/pending-approval" as any);
-      } else if (user.role === "driver") {
-        router.replace("/(driver)/" as any);
-      } else if (user.role === "admin") {
-        router.replace("/admin" as any);
-      } else {
-        router.replace("/(tabs)/" as any);
-      }
-      return;
-    }
+  // 2. Safely access user properties
+  const role = user?.role;
+  const status = user?.approvalStatus;
 
-    // Pending driver protection
-    if (user?.role === "driver" && user.approvalStatus === "pending" && !inPending) {
+  // 3. Handle Auth routes for logged-in users
+  if (inAuth && !inPending) {
+    if (role === "driver" && status === "pending") {
       router.replace("/auth/pending-approval" as any);
-      return;
-    }
-
-    // Admin routing protection
-    if (user?.role === "admin" && !inAdmin && !inAuth) {
-      router.replace("/admin" as any);
-      return;
-    }
-
-    // Role-based routing protection
-    if (user && user.role === "driver" && user.approvalStatus === "approved" && inTabs) {
+    } else if (role === "driver") {
       router.replace("/(driver)/" as any);
-      return;
-    }
-    
-    if (user && user.role !== "driver" && user.role !== "admin" && inDriver) {
+    } else if (role === "admin") {
+      router.replace("/admin" as any);
+    } else {
       router.replace("/(tabs)/" as any);
-      return; // Added return here
     }
-  }, [user, isLoading, segments]);
+    return;
+  }
 
-  if (isLoading) return null;
-  // ... rest of your return
+  // 4. Role-based protection
+  if (role === "driver" && status === "pending" && !inPending) {
+    router.replace("/auth/pending-approval" as any);
+    return;
+  }
+
+  if (role === "admin" && !inAdmin && !inAuth) {
+    router.replace("/admin" as any);
+    return;
+  }
+
+  if (role === "driver" && status === "approved" && inTabs) {
+    router.replace("/(driver)/" as any);
+    return;
+  }
+
+  if (role !== "driver" && role !== "admin" && inDriver) {
+    router.replace("/(tabs)/" as any);
+    return;
+  }
+}, [user, isLoading, segments]);
