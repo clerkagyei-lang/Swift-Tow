@@ -1,10 +1,19 @@
 import { useEffect } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useAuth } from "../hooks/useAuth";
+import { AuthProvider } from "../context/AuthContext";
 import { TowProvider } from "../providers/TowProvider";
 import { DriverProvider } from "../providers/DriverProvider";
 
-export default function RootLayoutNav() {
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <RootLayoutNav />
+    </AuthProvider>
+  );
+}
+
+function RootLayoutNav() {
   const { user, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
@@ -18,17 +27,14 @@ export default function RootLayoutNav() {
     const inAdmin = segments[0] === "admin";
     const inPending = segments[1] === "pending-approval";
 
-    // 1. If no user, must be in Auth
     if (!user) {
       if (!inAuth) router.replace("/auth/login" as any);
       return;
     }
 
-    // 2. Safely access user properties
     const role = user?.role;
-    const status = user?.approvalStatus;
+    const status = (user as any)?.approvalStatus;
 
-    // 3. Handle Auth routes for logged-in users
     if (inAuth && !inPending) {
       if (role === "driver" && status === "pending") {
         router.replace("/auth/pending-approval" as any);
@@ -42,7 +48,6 @@ export default function RootLayoutNav() {
       return;
     }
 
-    // 4. Role-based protection
     if (role === "driver" && status === "pending" && !inPending) {
       router.replace("/auth/pending-approval" as any);
       return;
