@@ -33,7 +33,7 @@ function RootLayoutNav() {
     }
 
     const role = user?.role;
-    const status = (user as any)?.approvalStatus;
+    const status = user?.approvalStatus;
 
     if (inAuth && !inPending) {
       if (role === "driver" && status === "pending") {

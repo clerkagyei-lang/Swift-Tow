@@ -14,6 +14,12 @@ interface User {
   role: "user" | "driver" | "admin";
   avatarUrl: string | null;
   createdAt: string;
+  approvalStatus?: "pending" | "approved" | "suspended";
+  vehicleType?: string;
+  vehiclePlate?: string;
+  isOnline?: boolean;
+  rating?: number;
+  totalTrips?: number;
 }
 
 interface AuthContextType {
