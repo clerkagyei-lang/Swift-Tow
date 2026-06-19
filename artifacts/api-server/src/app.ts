@@ -5,7 +5,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import pinoHttp from "pino-http";
 import { logger } from "./lib/logger";
-
 import router from "./routes";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -37,11 +36,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use("/api", router);
-
-// Redirect root to admin dashboard
-app.get("/", (_req, res) => {
-  res.redirect(301, "/admin-dashboard/");
-});
 
 const adminDistPath = path.resolve(
   __dirname,
