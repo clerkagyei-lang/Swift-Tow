@@ -7,6 +7,7 @@ import LoginPage from "@/pages/login";
 import DashboardPage from "@/pages/dashboard";
 import DriversPage from "@/pages/drivers";
 import RequestsPage from "@/pages/requests";
+import LiveMapPage from "@/pages/live-map";
 import NotFound from "@/pages/not-found";
 import Layout from "@/components/layout";
 
@@ -36,6 +37,7 @@ function Router() {
       <Route path="/" component={() => <ProtectedRoute component={DashboardPage} />} />
       <Route path="/drivers" component={() => <ProtectedRoute component={DriversPage} />} />
       <Route path="/requests" component={() => <ProtectedRoute component={RequestsPage} />} />
+      <Route path="/live-map" component={() => <ProtectedRoute component={LiveMapPage} />} />
       <Route component={NotFound} />
     </Switch>
   );

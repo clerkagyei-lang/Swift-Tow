@@ -8,6 +8,7 @@ import {
   LogOut,
   Menu,
   X,
+  Map,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     { href: "/", label: "Dashboard", icon: LayoutDashboard, badge: 0 },
     { href: "/drivers", label: "Drivers", icon: Users, badge: pendingDrivers },
     { href: "/requests", label: "Tow Requests", icon: Truck, badge: 0 },
+    { href: "/live-map", label: "Live Map", icon: Map, badge: 0 },
   ];
 
   return (
