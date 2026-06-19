@@ -135,12 +135,29 @@ export default function LoginScreen() {
             )}
           </Pressable>
 
-          <Pressable onPress={() => router.push("/auth/register")} style={styles.registerLink}>
-            <Text style={styles.registerText}>
-              Don't have an account?{" "}
-              <Text style={styles.registerHighlight}>Sign Up</Text>
-            </Text>
-          </Pressable>
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>New here?</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <View style={styles.signupRow}>
+            <Pressable
+              onPress={() => router.push("/auth/register")}
+              style={({ pressed }) => [styles.signupBtn, { borderColor: colors.border }, pressed && { opacity: 0.75 }]}
+            >
+              <Ionicons name="person-add-outline" size={16} color={colors.primary} />
+              <Text style={styles.signupBtnText}>Customer Sign Up</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => router.push("/auth/register-driver")}
+              style={({ pressed }) => [styles.signupBtn, styles.driverBtn, pressed && { opacity: 0.75 }]}
+            >
+              <Ionicons name="car-outline" size={16} color="#fff" />
+              <Text style={[styles.signupBtnText, { color: "#fff" }]}>Drive with Us</Text>
+            </Pressable>
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -209,8 +226,26 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       marginBottom: 16,
     },
     loginBtnText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" as const },
-    registerLink: { alignItems: "center" },
-    registerText: { fontSize: 14, color: colors.mutedForeground },
-    registerHighlight: { color: colors.primary, fontWeight: "600" as const },
+    divider: { flexDirection: "row", alignItems: "center", marginBottom: 14, gap: 10 },
+    dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+    dividerText: { fontSize: 12, color: colors.mutedForeground },
+    signupRow: { flexDirection: "row", gap: 10 },
+    signupBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      height: 44,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.muted,
+    },
+    driverBtn: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    signupBtnText: { fontSize: 13, fontWeight: "600" as const, color: colors.primary },
   });
 }
