@@ -34,6 +34,11 @@ app.use(cookieParser());
 
 app.use("/api", router);
 
+// Redirect root to admin dashboard
+app.get("/", (_req, res) => {
+  res.redirect(301, "/admin-dashboard/");
+});
+
 const adminDistPath = path.resolve(
   import.meta.dirname,
   "../../admin-dashboard/dist/public",
