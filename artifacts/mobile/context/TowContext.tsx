@@ -30,6 +30,7 @@ interface TowContextType {
   pendingPayment: { requestId: string; amount: number } | null;
   clearPendingPayment: () => void;
   driverLocation: { latitude: number; longitude: number } | null;
+  cancelRequest: () => Promise<void>;
 }
 
 const TowContext = createContext<TowContextType | null>(null);
@@ -42,6 +43,11 @@ export function TowProvider({ userId, children }: { userId: string | null; child
   const [pendingPayment, setPendingPayment] = useState<{ requestId: string; amount: number } | null>(null);
   const [driverLocation, setDriverLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const socketRef = useRef<Socket | null>(null);
+  const activeRequestRef = useRef<TowRequest | null>(null);
+  const towStatusRef = useRef<TowStatus>("idle");
+
+  useEffect(() => { activeRequestRef.current = activeRequest; }, [activeRequest]);
+  useEffect(() => { towStatusRef.current = towStatus; }, [towStatus]);
 
   useEffect(() => {
     if (!userId) return;
@@ -62,7 +68,9 @@ export function TowProvider({ userId, children }: { userId: string | null; child
     });
 
     socket.on("driver:location:update", ({ driverId, location }: { driverId: string; location: { latitude: number; longitude: number } }) => {
-      if (activeRequest?.driverId === driverId || towStatus === "accepted" || towStatus === "in_progress") {
+      const req = activeRequestRef.current;
+      const status = towStatusRef.current;
+      if (req?.driverId === driverId || status === "accepted" || status === "in_progress") {
         setDriverLocation(location);
       }
     });
@@ -78,6 +86,22 @@ export function TowProvider({ userId, children }: { userId: string | null; child
       socketRef.current = null;
     };
   }, [userId]);
+
+  const cancelRequest = async () => {
+    const req = activeRequestRef.current;
+    if (req) {
+      try {
+        await fetch(`https://${API_DOMAIN}/api/tow-requests/${req.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "cancelled" }),
+        });
+      } catch {}
+    }
+    setTowStatus("idle");
+    setActiveRequest(null);
+    setDriverLocation(null);
+  };
 
   const clearPendingPayment = () => {
     setPendingPayment(null);
@@ -97,6 +121,7 @@ export function TowProvider({ userId, children }: { userId: string | null; child
         pendingPayment,
         clearPendingPayment,
         driverLocation,
+        cancelRequest,
       }}
     >
       {children}

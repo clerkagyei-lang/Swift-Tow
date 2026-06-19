@@ -35,7 +35,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useAuth();
-  const { towStatus, setTowStatus, setActiveRequest, driverLocation } = useTow();
+  const { towStatus, setTowStatus, setActiveRequest } = useTow();
 
   const [pickupLocation, setPickupLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [pickupAddress, setPickupAddress] = useState("Locating you...");
@@ -46,7 +46,9 @@ export default function HomeScreen() {
   const mapRef = useRef<any>(null);
 
   useEffect(() => {
-    if (towStatus === "accepted" || towStatus === "in_progress") {
+    if (towStatus === "searching") {
+      router.push("/searching");
+    } else if (towStatus === "accepted" || towStatus === "in_progress") {
       router.push("/active-request");
     }
   }, [towStatus]);
@@ -109,10 +111,9 @@ export default function HomeScreen() {
       : null;
 
   const handleConfirmRequest = async () => {
-    if (!user || !pickupLocation) return;
+    if (!user || !pickupLocation || isSearching) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsSearching(true);
-    setTowStatus("searching");
 
     try {
       const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "localhost";
@@ -134,24 +135,13 @@ export default function HomeScreen() {
       const data = await res.json();
       if (res.ok) {
         setActiveRequest(data);
-        setTimeout(() => {
-          setTowStatus("accepted");
-          setIsSearching(false);
-          router.push("/active-request");
-        }, 4000);
+        setTowStatus("searching");
       } else {
         setIsSearching(false);
-        setTowStatus("idle");
       }
     } catch {
       setIsSearching(false);
-      setTowStatus("idle");
     }
-  };
-
-  const cancelSearch = () => {
-    setIsSearching(false);
-    setTowStatus("idle");
   };
 
   const handlePickupSelect = (loc: SelectedLocation) => {
@@ -173,9 +163,9 @@ export default function HomeScreen() {
         mapRef={mapRef}
         location={pickupLocation}
         dropoffLocation={dropoffLocation}
-        driverLocation={driverLocation}
+        driverLocation={null}
         colors={colors}
-        followUser={!driverLocation}
+        followUser={true}
       />
 
       <View style={[styles.topBar, { paddingTop: insets.top + (Platform.OS === "web" ? 67 : 10) }]}>
@@ -286,11 +276,6 @@ export default function HomeScreen() {
             </View>
           </Pressable>
 
-          {isSearching && (
-            <Pressable onPress={cancelSearch} style={styles.cancelBtn}>
-              <Text style={styles.cancelText}>Cancel Request</Text>
-            </Pressable>
-          )}
         </ScrollView>
       </View>
     </View>
