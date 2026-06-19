@@ -2,4 +2,4 @@
 NODE_VERSION = "22"
 
 [phases.install]
-cmds = ["pnpm install --no-frozen-lockfile"]
+cmds = ["pnpm install --no-frozen-lockfile --ignore-scripts"]
