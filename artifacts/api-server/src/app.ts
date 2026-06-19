@@ -2,9 +2,13 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, { type Express } from "express";
 import path from "path";
+import { fileURLToPath } from "url";
 import pinoHttp from "pino-http";
 import { logger } from "./lib/logger";
+
 import router from "./routes";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app: Express = express();
 
@@ -40,7 +44,7 @@ app.get("/", (_req, res) => {
 });
 
 const adminDistPath = path.resolve(
-  import.meta.dirname,
+  __dirname,
   "../../admin-dashboard/dist/public",
 );
 app.use("/admin-dashboard", express.static(adminDistPath));
