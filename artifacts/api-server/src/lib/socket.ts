@@ -3,7 +3,7 @@ import { Server as SocketIOServer } from "socket.io";
 import { logger } from "./logger";
 import { store } from "./store";
 
-const RATE_PER_KM = 1;
+const RATE_PER_KM = 20;   // GHS 10 per 0.5 km = GHS 20 per km
 const MIN_FARE = 10;
 
 function haversineKm(
