@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "PORT=3000 BASE_PATH=/admin-dashboard/ pnpm --filter @workspace/admin-dashboard run build && pnpm --filter @workspace/api-server run build"
+buildCommand = "PORT=3000 BASE_PATH=/admin-dashboard/ pnpm --filter @workspace/admin-dashboard run build && EXPO_BASE_URL=/mobile pnpm --filter @workspace/mobile run build:web && pnpm --filter @workspace/api-server run build"
 
 [deploy]
 startCommand = "node --enable-source-maps ./artifacts/api-server/dist/index.mjs"

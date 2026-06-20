@@ -103,7 +103,10 @@ export function DriverProvider({
   useEffect(() => {
     if (!driverId) return;
 
-    const socket = io(`https://${API_DOMAIN}`, {
+    const socketUrl = Platform.OS === "web" && typeof window !== "undefined"
+      ? window.location.origin
+      : `https://${API_DOMAIN}`;
+    const socket = io(socketUrl, {
       path: "/api/socket.io",
       transports: ["websocket", "polling"],
     });

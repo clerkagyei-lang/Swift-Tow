@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import { Platform } from "react-native";
 import { io, Socket } from "socket.io-client";
 
 export type TowStatus = "idle" | "searching" | "accepted" | "in_progress" | "completed";
@@ -52,7 +53,10 @@ export function TowProvider({ userId, children }: { userId: string | null; child
   useEffect(() => {
     if (!userId) return;
 
-    const socket = io(`https://${API_DOMAIN}`, {
+    const socketUrl = Platform.OS === "web" && typeof window !== "undefined"
+      ? window.location.origin
+      : `https://${API_DOMAIN}`;
+    const socket = io(socketUrl, {
       path: "/api/socket.io",
       transports: ["websocket", "polling"],
     });

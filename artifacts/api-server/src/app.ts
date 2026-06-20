@@ -51,4 +51,13 @@ app.get('/admin-dashboard/*path', (_req, res) => {
   res.sendFile(path.join(adminDistPath, 'index.html'));
 });
 
+const mobileWebDistPath = path.resolve(
+  __dirname,
+  '../../mobile/dist-web',
+);
+app.use('/mobile', express.static(mobileWebDistPath));
+app.get('/mobile/*path', (_req, res) => {
+  res.sendFile(path.join(mobileWebDistPath, 'index.html'));
+});
+
 export default app;
