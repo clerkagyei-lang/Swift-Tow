@@ -3,18 +3,15 @@ import { store } from "../lib/store";
 
 const router = Router();
 
-router.get("/drivers", (req, res) => {
+router.get("/drivers", async (req, res) => {
   const { online } = req.query;
-  let results = Array.from(store.drivers.values());
-  if (online !== undefined) {
-    const isOnline = online === "true";
-    results = results.filter((d) => d.isOnline === isOnline);
-  }
+  const filters = online !== undefined ? { online: online === "true" } : undefined;
+  const results = await store.getDrivers(filters);
   res.json(results);
 });
 
-router.get("/drivers/:id", (req, res) => {
-  const driver = store.drivers.get(req.params.id);
+router.get("/drivers/:id", async (req, res) => {
+  const driver = await store.getDriverById(req.params.id);
   if (!driver) {
     res.status(404).json({ error: "not_found", message: "Driver not found" });
     return;
@@ -22,15 +19,17 @@ router.get("/drivers/:id", (req, res) => {
   res.json(driver);
 });
 
-router.patch("/drivers/:id/status", (req, res) => {
+router.patch("/drivers/:id/status", async (req, res) => {
   const { isOnline, currentLocation } = req.body;
-  const driver = store.drivers.get(req.params.id);
+  const driver = await store.getDriverById(req.params.id);
   if (!driver) {
     res.status(404).json({ error: "not_found", message: "Driver not found" });
     return;
   }
-  const updated = { ...driver, isOnline, currentLocation: currentLocation || driver.currentLocation };
-  store.drivers.set(req.params.id, updated);
+  const updated = await store.updateDriver(req.params.id, {
+    isOnline,
+    currentLocation: currentLocation ?? driver.currentLocation,
+  });
   res.json(updated);
 });
 

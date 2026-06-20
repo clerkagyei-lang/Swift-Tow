@@ -1,0 +1,2 @@
+- [DB-backed store pattern](db-store-pattern.md) — in-memory store replaced with async Drizzle/Postgres; driver GPS locations stay in-memory cache only (too frequent for DB writes).
+- [Workflow port config](workflow-ports.md) — API Server on port 8080 (console), Swift Tow Mobile on port 5000 (webview). Admin dashboard built separately and served as static files by Express.

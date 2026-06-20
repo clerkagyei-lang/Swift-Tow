@@ -1,33 +1,29 @@
-import { Router } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import { store } from "../lib/store";
 import { logger } from "../lib/logger";
 
 const router = Router();
 
-// Simple admin auth middleware — checks X-Admin-Token header or userId param matches an admin
-function requireAdmin(req: any, res: any, next: any) {
+async function requireAdmin(req: Request, res: Response, next: NextFunction) {
   const userId = (req.query.userId ?? req.body?.userId) as string | undefined;
   if (userId) {
-    const user = store.getUserById(userId);
+    const user = await store.getUserById(userId);
     if (user?.role === "admin") { next(); return; }
   }
   res.status(403).json({ error: "forbidden", message: "Admin access required" });
 }
 
-// GET /api/admin/drivers — list all drivers (filter by status)
-router.get("/admin/drivers", requireAdmin, (req, res) => {
+router.get("/admin/drivers", requireAdmin, async (req, res) => {
   const { status } = req.query;
-  let driverList = Array.from(store.drivers.values());
+  let driverList = await store.getDrivers();
   if (status) driverList = driverList.filter((d) => d.approvalStatus === status);
-
   const safe = driverList.map(({ password: _, ...d }) => d);
   res.json(safe);
 });
 
-// PATCH /api/admin/drivers/:id/approve
-router.patch("/admin/drivers/:id/approve", requireAdmin, (req, res) => {
+router.patch("/admin/drivers/:id/approve", requireAdmin, async (req, res) => {
   const { note } = req.body;
-  const updated = store.updateDriver(req.params.id, {
+  const updated = await store.updateDriver(req.params.id, {
     approvalStatus: "approved",
     approvalNote: note ?? null,
   });
@@ -40,10 +36,9 @@ router.patch("/admin/drivers/:id/approve", requireAdmin, (req, res) => {
   res.json(safe);
 });
 
-// PATCH /api/admin/drivers/:id/reject
-router.patch("/admin/drivers/:id/reject", requireAdmin, (req, res) => {
+router.patch("/admin/drivers/:id/reject", requireAdmin, async (req, res) => {
   const { note } = req.body;
-  const updated = store.updateDriver(req.params.id, {
+  const updated = await store.updateDriver(req.params.id, {
     approvalStatus: "suspended",
     approvalNote: note ?? "Application rejected",
   });

@@ -4,7 +4,7 @@ import { getIO } from "../lib/socket";
 
 const router = Router();
 
-router.post("/tow-requests", (req, res) => {
+router.post("/tow-requests", async (req, res) => {
   const { userId, userName, userPhone, towType, pickupLocation, pickupAddress, dropoffLocation, dropoffAddress, vehicleDetails } = req.body;
 
   if (!userId || !userName || !userPhone || !towType || !pickupLocation || !pickupAddress || !vehicleDetails) {
@@ -12,7 +12,7 @@ router.post("/tow-requests", (req, res) => {
     return;
   }
 
-  const request = store.createTowRequest({
+  const request = await store.createTowRequest({
     userId,
     userName,
     userPhone,
@@ -36,20 +36,18 @@ router.post("/tow-requests", (req, res) => {
   res.status(201).json(request);
 });
 
-router.get("/tow-requests", (req, res) => {
+router.get("/tow-requests", async (req, res) => {
   const { userId, driverId, status } = req.query;
-  let results = Array.from(store.towRequests.values());
-
-  if (userId) results = results.filter((r) => r.userId === userId);
-  if (driverId) results = results.filter((r) => r.driverId === driverId);
-  if (status) results = results.filter((r) => r.status === status);
-
-  results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const results = await store.getTowRequests({
+    userId: userId as string | undefined,
+    driverId: driverId as string | undefined,
+    status: status as string | undefined,
+  });
   res.json(results);
 });
 
-router.get("/tow-requests/:id", (req, res) => {
-  const request = store.towRequests.get(req.params.id);
+router.get("/tow-requests/:id", async (req, res) => {
+  const request = await store.getTowRequestById(req.params.id);
   if (!request) {
     res.status(404).json({ error: "not_found", message: "Request not found" });
     return;
@@ -57,9 +55,9 @@ router.get("/tow-requests/:id", (req, res) => {
   res.json(request);
 });
 
-router.patch("/tow-requests/:id", (req, res) => {
-  const { status, driverId, driverLocation, estimatedArrival } = req.body;
-  const updated = store.updateTowRequest(req.params.id, {
+router.patch("/tow-requests/:id", async (req, res) => {
+  const { status, driverId, estimatedArrival } = req.body;
+  const updated = await store.updateTowRequest(req.params.id, {
     status,
     driverId,
     estimatedArrival,

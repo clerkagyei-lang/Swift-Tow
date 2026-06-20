@@ -3,7 +3,7 @@ import { store } from "../lib/store";
 
 const router = Router();
 
-router.post("/auth/register", (req, res) => {
+router.post("/auth/register", async (req, res) => {
   const { name, email, password, phone, role = "user" } = req.body;
 
   if (!name || !email || !password || !phone) {
@@ -11,18 +11,18 @@ router.post("/auth/register", (req, res) => {
     return;
   }
 
-  const existing = store.getUserByEmail(email);
+  const existing = await store.getUserByEmail(email);
   if (existing) {
     res.status(400).json({ error: "email_taken", message: "Email already registered" });
     return;
   }
 
-  const user = store.createUser({ name, email, password, phone, role: role as "user" | "driver", avatarUrl: null });
+  const user = await store.createUser({ name, email, password, phone, role: role as "user" | "driver", avatarUrl: null });
   const { password: _, ...safeUser } = user;
   res.status(201).json({ token: user.id, user: safeUser });
 });
 
-router.post("/auth/register-driver", (req, res) => {
+router.post("/auth/register-driver", async (req, res) => {
   const { name, email, password, phone, vehicleType, vehiclePlate, licenseNumber } = req.body;
 
   if (!name || !email || !password || !phone || !vehicleType || !vehiclePlate || !licenseNumber) {
@@ -30,12 +30,16 @@ router.post("/auth/register-driver", (req, res) => {
     return;
   }
 
-  if (store.getDriverByEmail(email) || store.getUserByEmail(email)) {
+  const [existingDriver, existingUser] = await Promise.all([
+    store.getDriverByEmail(email),
+    store.getUserByEmail(email),
+  ]);
+  if (existingDriver || existingUser) {
     res.status(400).json({ error: "email_taken", message: "Email already registered" });
     return;
   }
 
-  const driver = store.createDriver({
+  const driver = await store.createDriver({
     name,
     email,
     password,
@@ -72,7 +76,7 @@ router.post("/auth/register-driver", (req, res) => {
   });
 });
 
-router.post("/auth/login", (req, res) => {
+router.post("/auth/login", async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -80,16 +84,17 @@ router.post("/auth/login", (req, res) => {
     return;
   }
 
-  // Check regular users first
-  const user = store.getUserByEmail(email);
+  const [user, driver] = await Promise.all([
+    store.getUserByEmail(email),
+    store.getDriverByEmail(email),
+  ]);
+
   if (user && user.password === password) {
     const { password: _, ...safeUser } = user;
     res.json({ token: user.id, user: safeUser });
     return;
   }
 
-  // Check drivers
-  const driver = store.getDriverByEmail(email);
   if (driver && driver.password === password) {
     if (driver.approvalStatus === "suspended") {
       res.status(403).json({ error: "account_suspended", message: "Your driver account has been suspended. Contact support." });
@@ -119,21 +124,24 @@ router.post("/auth/login", (req, res) => {
   res.status(401).json({ error: "invalid_credentials", message: "Invalid email or password" });
 });
 
-router.get("/auth/profile", (req, res) => {
+router.get("/auth/profile", async (req, res) => {
   const { userId } = req.query;
   if (!userId || typeof userId !== "string") {
     res.status(400).json({ error: "validation_error", message: "userId required" });
     return;
   }
 
-  const user = store.getUserById(userId);
+  const [user, driver] = await Promise.all([
+    store.getUserById(userId),
+    store.getDriverById(userId),
+  ]);
+
   if (user) {
     const { password: _, ...safeUser } = user;
     res.json(safeUser);
     return;
   }
 
-  const driver = store.drivers.get(userId);
   if (driver) {
     const { password: _, ...safeDriver } = driver;
     res.json({ ...safeDriver, role: "driver" });
@@ -143,7 +151,7 @@ router.get("/auth/profile", (req, res) => {
   res.status(404).json({ error: "not_found", message: "User not found" });
 });
 
-router.put("/auth/profile", (req, res) => {
+router.put("/auth/profile", async (req, res) => {
   const { userId, name, phone, avatarUrl } = req.body;
 
   if (!userId) {
@@ -151,7 +159,7 @@ router.put("/auth/profile", (req, res) => {
     return;
   }
 
-  const user = store.updateUser(userId, { name, phone, avatarUrl });
+  const user = await store.updateUser(userId, { name, phone, avatarUrl });
   if (user) {
     const { password: _, ...safeUser } = user;
     res.json(safeUser);

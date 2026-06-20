@@ -21,7 +21,7 @@ pnpm workspace monorepo using TypeScript with an Expo mobile app and a Node.js A
 - **TypeScript version**: 5.9
 - **Mobile**: Expo (SDK 53), Expo Router v6, React Native
 - **API framework**: Express 5 + Socket.io (real-time tow coordination)
-- **Data store**: In-memory Maps with seed data (no DB — demo)
+- **Data store**: Replit PostgreSQL via Drizzle ORM (`lib/db`); schema: users, drivers, tow_requests, trips
 - **API codegen**: Orval (from OpenAPI spec at `lib/api-spec`)
 - **Build**: esbuild (CJS bundle for API server)
 
@@ -40,7 +40,7 @@ pnpm workspace monorepo using TypeScript with an Expo mobile app and a Node.js A
 
 ## Features
 
-- Auth (register/login with in-memory store, no real JWT — token = userId for demo)
+- Auth (register/login backed by PostgreSQL, no real JWT — token = userId for demo)
 - Tow request flow: select tow type (Flatbed/Hook & Chain/Repair) → confirm → real-time socket events
 - Payment: MTN MoMo, Telecel Cash, AT Money, Cash
 - Real-time via Socket.io: user joins room, driver accepts → `request:accepted`, trip complete → `request:completed`
@@ -84,8 +84,16 @@ Then restart the api-server workflow to reload the files.
 - Auth context uses `expo-secure-store` on native, `localStorage` on web
 - TowContext connects socket only when `userId` is non-null (post-login)
 
-## Seed Drivers
+## Database
 
-Two drivers seeded in store on startup:
-- Kwame Asante (+233244567890) — online, near Labone area
-- Abena Osei (+233244890123) — online, near Osu area
+Replit PostgreSQL. `DATABASE_URL` is set automatically. Schema is managed by Drizzle Kit.
+
+To push schema changes: `pnpm --filter @workspace/db push`
+
+**Seed data** (written once on first startup, stable UUIDs):
+- Admin: `admin@swifttow.com` / `admin123`
+- User: `john@example.com` / `password123`
+- Drivers (approved): Kwame Asante, Kofi Mensah, Ama Owusu — password `driver123`
+- Drivers (pending): Yaw Darko, Akosua Frimpong — password `driver123`
+
+Driver live locations are cached in-memory only (not persisted to DB) — GPS updates are too frequent for DB writes.

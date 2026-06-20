@@ -3,7 +3,7 @@ import { Server as SocketIOServer } from "socket.io";
 import { logger } from "./logger";
 import { store } from "./store";
 
-const RATE_PER_KM = 20;   // GHS 10 per 0.5 km = GHS 20 per km
+const RATE_PER_KM = 20;
 const MIN_FARE = 10;
 
 function haversineKm(
@@ -55,23 +55,21 @@ export function initSocket(httpServer: HttpServer): SocketIOServer {
     });
 
     socket.on("driver:location", ({ driverId, location }: { driverId: string; location: { latitude: number; longitude: number } }) => {
-      const driver = store.drivers.get(driverId);
-      if (driver) {
-        store.drivers.set(driverId, { ...driver, currentLocation: location });
-        io?.emit("driver:location:update", { driverId, location });
-      }
+      // Update in-memory location cache (fast path — no DB write per GPS tick)
+      store.updateDriverLocationCache(driverId, location);
+      io?.emit("driver:location:update", { driverId, location });
     });
 
-    socket.on("request:new", (requestId: string) => {
-      const req = store.towRequests.get(requestId);
+    socket.on("request:new", async (requestId: string) => {
+      const req = await store.getTowRequestById(requestId);
       if (req) {
         io?.emit("request:incoming", req);
         logger.info({ requestId }, "New tow request broadcast");
       }
     });
 
-    socket.on("request:accept", ({ requestId, driverId }: { requestId: string; driverId: string }) => {
-      const req = store.updateTowRequest(requestId, {
+    socket.on("request:accept", async ({ requestId, driverId }: { requestId: string; driverId: string }) => {
+      const req = await store.updateTowRequest(requestId, {
         status: "accepted",
         driverId,
         estimatedArrival: Math.floor(Math.random() * 10) + 5,
@@ -82,25 +80,25 @@ export function initSocket(httpServer: HttpServer): SocketIOServer {
       }
     });
 
-    socket.on("request:complete", ({ requestId }: { requestId: string; amount?: number }) => {
-      const req = store.towRequests.get(requestId);
+    socket.on("request:complete", async ({ requestId }: { requestId: string }) => {
+      const req = await store.getTowRequestById(requestId);
       if (!req || !req.driverId) return;
 
-      const driver = store.drivers.get(req.driverId);
-      const dropoff = req.dropoffLocation ?? driver?.currentLocation ?? req.pickupLocation;
-      const amount = computeFare(req.pickupLocation, dropoff);
+      const driver = await store.getDriverById(req.driverId);
+      const dropoff = (req.dropoffLocation as any) ?? driver?.currentLocation ?? req.pickupLocation;
+      const amount = computeFare(req.pickupLocation as any, dropoff);
 
-      const updated = store.updateTowRequest(requestId, { status: "completed", amount });
+      const updated = await store.updateTowRequest(requestId, { status: "completed", amount });
       if (updated && updated.driverId) {
-        const d = store.drivers.get(updated.driverId);
+        const d = await store.getDriverById(updated.driverId);
         if (d) {
-          store.createTrip({
+          await store.createTrip({
             towRequestId: requestId,
             userId: updated.userId,
             driverId: updated.driverId,
             driverName: d.name,
             pickupAddress: updated.pickupAddress,
-            dropoffAddress: updated.dropoffAddress,
+            dropoffAddress: updated.dropoffAddress ?? null,
             vehicleDetails: updated.vehicleDetails,
             towType: updated.towType,
             amount,
@@ -108,11 +106,20 @@ export function initSocket(httpServer: HttpServer): SocketIOServer {
             paymentStatus: "pending",
             completedAt: new Date().toISOString(),
           });
-          store.drivers.set(updated.driverId, { ...d, activeJobId: null });
+          await store.updateDriver(updated.driverId, { activeJobId: null });
         }
         io?.to(`user:${updated.userId}`).emit("request:completed", { requestId, amount });
         io?.emit("request:status:update", updated);
-        logger.info({ requestId, amount, distKm: haversineKm(updated.pickupLocation.latitude, updated.pickupLocation.longitude, dropoff.latitude, dropoff.longitude).toFixed(2) }, "Trip completed");
+        logger.info({
+          requestId,
+          amount,
+          distKm: haversineKm(
+            (updated.pickupLocation as any).latitude,
+            (updated.pickupLocation as any).longitude,
+            dropoff.latitude,
+            dropoff.longitude
+          ).toFixed(2),
+        }, "Trip completed");
       }
     });
 
