@@ -1,15 +1,20 @@
 import { useEffect } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "../hooks/useAuth";
 import { AuthProvider } from "../context/AuthContext";
 import { TowProvider } from "../providers/TowProvider";
 import { DriverProvider } from "../providers/DriverProvider";
 
+const queryClient = new QueryClient();
+
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
