@@ -38,21 +38,30 @@ export default function LoginScreen() {
     setIsLoading(true);
     setError("");
 
+    const apiUrl = `${getApiBase()}/api/auth/login`;
     try {
-      const res = await fetch(`${getApiBase()}/api/auth/login`, {
+      const res = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message ?? "Login failed");
+      let data: Record<string, unknown>;
+      try {
+        data = await res.json();
+      } catch {
+        const text = await res.text().catch(() => "(no body)");
+        setError(`Server error ${res.status}: ${text.slice(0, 120)}`);
         return;
       }
-      await login(data.token, data.user);
+      if (!res.ok) {
+        setError((data.message as string) ?? "Login failed");
+        return;
+      }
+      await login(data.token as string, data.user as Parameters<typeof login>[1]);
       router.replace("/(tabs)");
-    } catch {
-      setError("Network error. Please try again.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`Failed (${msg}) — URL: ${apiUrl}`);
     } finally {
       setIsLoading(false);
     }

@@ -70,8 +70,9 @@ export default function RegisterDriverScreen() {
       }
       await login(data.token, data.user);
       router.replace("/auth/pending-approval" as any);
-    } catch {
-      setError("Network error. Please try again.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`Error: ${msg}`);
     } finally {
       setIsLoading(false);
     }

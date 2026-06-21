@@ -61,8 +61,9 @@ export default function RegisterScreen() {
       }
       await login(data.token, data.user);
       router.replace("/(tabs)");
-    } catch {
-      setError("Network error. Please try again.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`Error: ${msg}`);
     } finally {
       setIsLoading(false);
     }
