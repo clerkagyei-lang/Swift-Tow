@@ -44,7 +44,7 @@ interface DriverContextType {
 
 const DriverContext = createContext<DriverContextType | null>(null);
 
-const API_DOMAIN = process.env.EXPO_PUBLIC_DOMAIN ?? "localhost";
+const API_DOMAIN = process.env.EXPO_PUBLIC_DOMAIN ?? "swifttowtruck-api-server.up.railway.app";
 
 const RATE_PER_KM = 20;   // GHS 10 per 0.5 km = GHS 20 per km
 const MIN_FARE = 10;       // minimum fare: GHS 10 (covers first 0.5 km)

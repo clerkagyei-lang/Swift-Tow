@@ -37,7 +37,7 @@ interface TowContextType {
 
 const TowContext = createContext<TowContextType | null>(null);
 
-const API_DOMAIN = process.env.EXPO_PUBLIC_DOMAIN ?? "localhost";
+const API_DOMAIN = process.env.EXPO_PUBLIC_DOMAIN ?? "swifttowtruck-api-server.up.railway.app";
 
 export function TowProvider({ userId, children }: { userId: string | null; children: React.ReactNode }) {
   const [activeRequest, setActiveRequest] = useState<TowRequest | null>(null);

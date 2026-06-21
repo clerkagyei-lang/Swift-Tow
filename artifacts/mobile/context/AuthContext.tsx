@@ -3,7 +3,7 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 
-const API_DOMAIN = process.env.EXPO_PUBLIC_DOMAIN ?? "swift-tow-truck-api-server.vercel.app";
+const API_DOMAIN = process.env.EXPO_PUBLIC_DOMAIN ?? "swifttowtruck-api-server.up.railway.app";
 setBaseUrl(
   Platform.OS === "web" && typeof window !== "undefined"
     ? window.location.origin
