@@ -11,6 +11,8 @@ export interface IncomingRequest {
   towType: "flatbed" | "hook_chain" | "repair";
   pickupLocation: { latitude: number; longitude: number };
   pickupAddress: string;
+  dropoffLocation: { latitude: number; longitude: number } | null;
+  dropoffAddress: string | null;
   vehicleDetails: string;
   estimatedAmount: number;
 }
@@ -25,6 +27,8 @@ export interface ActiveTrip {
   towType: "flatbed" | "hook_chain" | "repair";
   pickupLocation: { latitude: number; longitude: number };
   pickupAddress: string;
+  dropoffLocation: { latitude: number; longitude: number } | null;
+  dropoffAddress: string | null;
   vehicleDetails: string;
 }
 
@@ -194,6 +198,8 @@ export function DriverProvider({
       towType: incomingRequest.towType,
       pickupLocation: incomingRequest.pickupLocation,
       pickupAddress: incomingRequest.pickupAddress,
+      dropoffLocation: incomingRequest.dropoffLocation ?? null,
+      dropoffAddress: incomingRequest.dropoffAddress ?? null,
       vehicleDetails: incomingRequest.vehicleDetails,
     });
     setTripStatus("accepted");
@@ -206,7 +212,7 @@ export function DriverProvider({
 
   const completeTrip = useCallback(() => {
     if (!activeTrip) return;
-    const dropoff = driverLocation ?? activeTrip.pickupLocation;
+    const dropoff = activeTrip.dropoffLocation ?? driverLocation ?? activeTrip.pickupLocation;
     const amount = computeFare(activeTrip.pickupLocation, dropoff);
     socketRef.current?.emit("request:complete", { requestId: activeTrip.requestId, amount });
     setEarningsToday((prev) => prev + amount);

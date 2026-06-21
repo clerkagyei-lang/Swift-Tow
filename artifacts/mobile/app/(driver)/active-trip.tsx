@@ -34,7 +34,7 @@ export default function ActiveTripScreen() {
   const bottomPad = insets.bottom + TAB_BAR_HEIGHT;
   const styles = makeStyles(colors, bottomPad);
 
-  const dropoff = driverLocation ?? activeTrip?.pickupLocation ?? null;
+  const dropoff = activeTrip?.dropoffLocation ?? driverLocation ?? activeTrip?.pickupLocation ?? null;
   const distanceKm =
     activeTrip && dropoff
       ? haversineKm(
@@ -158,8 +158,8 @@ export default function ActiveTripScreen() {
           <View style={styles.fareCard}>
             <View style={styles.fareRow}>
               <View>
-                <Text style={styles.fareLabel}>Fare (1 GHS / km)</Text>
-                <Text style={styles.fareDistance}>{distanceKm.toFixed(2)} km travelled</Text>
+                <Text style={styles.fareLabel}>Fare (GHS 20 / km)</Text>
+                <Text style={styles.fareDistance}>{distanceKm.toFixed(2)} km</Text>
               </View>
               <Text style={styles.fareAmount}>GHS {fare.toFixed(2)}</Text>
             </View>
