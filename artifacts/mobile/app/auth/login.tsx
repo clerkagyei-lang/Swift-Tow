@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,7 +16,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
-import TowTruckLogo from "@/components/TowTruckLogo";
 import { getApiBase } from "@/utils/apiUrl";
 
 export default function LoginScreen() {
@@ -80,9 +80,7 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.logoArea}>
-          <View style={styles.logoCircle}>
-            <TowTruckLogo size={48} color={colors.primary} />
-          </View>
+          <Image source={require("@/assets/icon.png")} style={styles.logoImage} />
           <Text style={styles.brand}>Swift Tow</Text>
           <Text style={styles.tagline}>Fast. Reliable. On-Demand.</Text>
         </View>
@@ -179,13 +177,10 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     container: { flex: 1 },
     scroll: { flexGrow: 1, paddingHorizontal: 24 },
     logoArea: { alignItems: "center", marginBottom: 32 },
-    logoCircle: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      backgroundColor: "rgba(255,107,0,0.15)",
-      alignItems: "center",
-      justifyContent: "center",
+    logoImage: {
+      width: 100,
+      height: 100,
+      borderRadius: 22,
       marginBottom: 12,
     },
     brand: { fontSize: 28, fontWeight: "700" as const, color: "#FFFFFF", letterSpacing: -0.5 },

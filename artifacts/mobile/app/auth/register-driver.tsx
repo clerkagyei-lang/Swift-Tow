@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -95,9 +96,7 @@ export default function RegisterDriverScreen() {
         </Pressable>
 
         <View style={styles.headerArea}>
-          <View style={styles.logoCircle}>
-            <Ionicons name="car" size={36} color={colors.primary} />
-          </View>
+          <Image source={require("@/assets/icon.png")} style={styles.logoImage} />
           <Text style={styles.brand}>Driver Registration</Text>
           <Text style={styles.tagline}>Join the Swift Tow fleet</Text>
         </View>
@@ -228,7 +227,7 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     scroll: { flexGrow: 1, paddingHorizontal: 24 },
     backBtn: { marginBottom: 12, alignSelf: "flex-start", padding: 4 },
     headerArea: { alignItems: "center", marginBottom: 20 },
-    logoCircle: { width: 68, height: 68, borderRadius: 34, backgroundColor: "rgba(255,107,0,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 10 },
+    logoImage: { width: 90, height: 90, borderRadius: 20, marginBottom: 10 },
     brand: { fontSize: 22, fontWeight: "700" as const, color: "#FFFFFF" },
     tagline: { fontSize: 13, color: "rgba(255,255,255,0.65)", marginTop: 4 },
     card: { backgroundColor: colors.card, borderRadius: 20, padding: 24, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 6 },

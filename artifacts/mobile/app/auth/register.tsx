@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -86,9 +87,7 @@ export default function RegisterScreen() {
         </Pressable>
 
         <View style={styles.logoArea}>
-          <View style={styles.logoCircle}>
-            <Ionicons name="car-sport" size={36} color={colors.primary} />
-          </View>
+          <Image source={require("@/assets/icon.png")} style={styles.logoImage} />
           <Text style={styles.brand}>Swift Tow</Text>
         </View>
 
@@ -158,13 +157,10 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     scroll: { flexGrow: 1, paddingHorizontal: 24 },
     backBtn: { marginBottom: 16, alignSelf: "flex-start", padding: 4 },
     logoArea: { alignItems: "center", marginBottom: 24 },
-    logoCircle: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      backgroundColor: "rgba(255,107,0,0.15)",
-      alignItems: "center",
-      justifyContent: "center",
+    logoImage: {
+      width: 90,
+      height: 90,
+      borderRadius: 20,
       marginBottom: 8,
     },
     brand: { fontSize: 22, fontWeight: "700" as const, color: "#FFFFFF" },
