@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { getApiBase } from "@/utils/apiUrl";
 
 const VEHICLE_TYPES = ["Flatbed", "Hook & Chain", "Wheel-Lift", "Integrated"];
 
@@ -49,8 +50,7 @@ export default function RegisterDriverScreen() {
     setError("");
 
     try {
-      const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "localhost";
-      const res = await fetch(`https://${domain}/api/auth/register-driver`, {
+      const res = await fetch(`${getApiBase()}/api/auth/register-driver`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

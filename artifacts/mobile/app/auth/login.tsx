@@ -15,6 +15,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import TowTruckLogo from "@/components/TowTruckLogo";
+import { getApiBase } from "@/utils/apiUrl";
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -37,8 +39,7 @@ export default function LoginScreen() {
     setError("");
 
     try {
-      const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "localhost";
-      const res = await fetch(`https://${domain}/api/auth/login`, {
+      const res = await fetch(`${getApiBase()}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
@@ -71,7 +72,7 @@ export default function LoginScreen() {
       >
         <View style={styles.logoArea}>
           <View style={styles.logoCircle}>
-            <Ionicons name="car-sport" size={40} color={colors.primary} />
+            <TowTruckLogo size={48} color={colors.primary} />
           </View>
           <Text style={styles.brand}>Swift Tow</Text>
           <Text style={styles.tagline}>Fast. Reliable. On-Demand.</Text>

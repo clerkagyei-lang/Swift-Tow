@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { getApiBase } from "@/utils/apiUrl";
 
 export default function RegisterScreen() {
   const colors = useColors();
@@ -42,8 +43,7 @@ export default function RegisterScreen() {
     setError("");
 
     try {
-      const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "localhost";
-      const res = await fetch(`https://${domain}/api/auth/register`, {
+      const res = await fetch(`${getApiBase()}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
