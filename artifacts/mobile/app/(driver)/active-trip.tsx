@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useDriver, computeFare, haversineKm } from "@/context/DriverContext";
+import { useDriver, computeFare, haversineKm, TOW_PRICING } from "@/context/DriverContext";
 import { useColors } from "@/hooks/useColors";
 import DriverMapComponent from "@/components/DriverMapComponent";
 
@@ -46,7 +46,7 @@ export default function ActiveTripScreen() {
       : 0;
   const fare =
     activeTrip && dropoff
-      ? computeFare(activeTrip.pickupLocation, dropoff)
+      ? computeFare(activeTrip.pickupLocation, dropoff, activeTrip.towType)
       : 0;
 
   if (!activeTrip || tripStatus === "idle") {
@@ -158,7 +158,7 @@ export default function ActiveTripScreen() {
           <View style={styles.fareCard}>
             <View style={styles.fareRow}>
               <View>
-                <Text style={styles.fareLabel}>Fare (GHS 20 / km)</Text>
+                <Text style={styles.fareLabel}>Fare ({activeTrip ? TOW_PRICING[activeTrip.towType].label : "GHS 20 / km"})</Text>
                 <Text style={styles.fareDistance}>{distanceKm.toFixed(2)} km</Text>
               </View>
               <Text style={styles.fareAmount}>GHS {fare.toFixed(2)}</Text>

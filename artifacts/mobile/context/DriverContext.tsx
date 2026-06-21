@@ -50,8 +50,11 @@ const DriverContext = createContext<DriverContextType | null>(null);
 
 const API_DOMAIN = process.env.EXPO_PUBLIC_DOMAIN ?? "swifttowtruck-api-server.up.railway.app";
 
-const RATE_PER_KM = 20;   // GHS 10 per 0.5 km = GHS 20 per km
-const MIN_FARE = 10;       // minimum fare: GHS 10 (covers first 0.5 km)
+export const TOW_PRICING = {
+  flatbed:    { ratePerKm: 20, minFare: 30, label: "GHS 20 / km" },
+  hook_chain: { ratePerKm: 15, minFare: 25, label: "GHS 15 / km" },
+  repair:     { ratePerKm: 0,  minFare: 80, label: "GHS 80 flat" },
+} as const;
 
 export function haversineKm(
   lat1: number, lon1: number,
@@ -69,10 +72,13 @@ export function haversineKm(
 
 export function computeFare(
   pickup: { latitude: number; longitude: number },
-  dropoff: { latitude: number; longitude: number }
+  dropoff: { latitude: number; longitude: number },
+  towType: "flatbed" | "hook_chain" | "repair" = "flatbed"
 ): number {
+  const { ratePerKm, minFare } = TOW_PRICING[towType] ?? TOW_PRICING.flatbed;
+  if (ratePerKm === 0) return minFare; // flat fee (repair)
   const distKm = haversineKm(pickup.latitude, pickup.longitude, dropoff.latitude, dropoff.longitude);
-  return Math.max(MIN_FARE, Math.round(distKm * RATE_PER_KM * 100) / 100);
+  return Math.max(minFare, Math.round(distKm * ratePerKm * 100) / 100);
 }
 
 const TOW_ESTIMATED_AMOUNTS: Record<string, number> = {
@@ -213,7 +219,7 @@ export function DriverProvider({
   const completeTrip = useCallback(() => {
     if (!activeTrip) return;
     const dropoff = activeTrip.dropoffLocation ?? driverLocation ?? activeTrip.pickupLocation;
-    const amount = computeFare(activeTrip.pickupLocation, dropoff);
+    const amount = computeFare(activeTrip.pickupLocation, dropoff, activeTrip.towType);
     socketRef.current?.emit("request:complete", { requestId: activeTrip.requestId, amount });
     setEarningsToday((prev) => prev + amount);
     setTripStatus("completed");

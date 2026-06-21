@@ -108,7 +108,7 @@ export default function HomeScreen() {
 
   const estimatedFare =
     pickupLocation && dropoffLocation
-      ? computeFare(pickupLocation, dropoffLocation)
+      ? computeFare(pickupLocation, dropoffLocation, selectedTow)
       : null;
 
   const handleConfirmRequest = async () => {

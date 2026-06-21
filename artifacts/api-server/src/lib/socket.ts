@@ -3,8 +3,11 @@ import { Server as SocketIOServer } from "socket.io";
 import { logger } from "./logger";
 import { store } from "./store";
 
-const RATE_PER_KM = 20;
-const MIN_FARE = 10;
+const TOW_PRICING: Record<string, { ratePerKm: number; minFare: number }> = {
+  flatbed:    { ratePerKm: 20, minFare: 30 },
+  hook_chain: { ratePerKm: 15, minFare: 25 },
+  repair:     { ratePerKm: 0,  minFare: 80 },
+};
 
 function haversineKm(
   lat1: number, lon1: number,
@@ -22,10 +25,13 @@ function haversineKm(
 
 function computeFare(
   pickup: { latitude: number; longitude: number },
-  dropoff: { latitude: number; longitude: number }
+  dropoff: { latitude: number; longitude: number },
+  towType = "flatbed"
 ): number {
+  const { ratePerKm, minFare } = TOW_PRICING[towType] ?? TOW_PRICING.flatbed;
+  if (ratePerKm === 0) return minFare;
   const distKm = haversineKm(pickup.latitude, pickup.longitude, dropoff.latitude, dropoff.longitude);
-  return Math.max(MIN_FARE, Math.round(distKm * RATE_PER_KM * 100) / 100);
+  return Math.max(minFare, Math.round(distKm * ratePerKm * 100) / 100);
 }
 
 let io: SocketIOServer | null = null;
@@ -86,7 +92,7 @@ export function initSocket(httpServer: HttpServer): SocketIOServer {
 
       const driver = await store.getDriverById(req.driverId);
       const dropoff = (req.dropoffLocation as any) ?? driver?.currentLocation ?? req.pickupLocation;
-      const amount = computeFare(req.pickupLocation as any, dropoff);
+      const amount = computeFare(req.pickupLocation as any, dropoff, req.towType);
 
       const updated = await store.updateTowRequest(requestId, { status: "completed", amount });
       if (updated && updated.driverId) {
