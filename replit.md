@@ -9,8 +9,8 @@ pnpm workspace monorepo using TypeScript with an Expo mobile app and a Node.js A
 
 | Artifact | Kind | Path |
 |---|---|---|
-| `artifacts/mobile` | Expo (React Native) | Preview via Expo Dev Domain |
-| `artifacts/api-server` | Express API + Socket.io | `/api/*`, `/admin-dashboard/*` |
+| `artifacts/mobile` | Expo (React Native) | `/mobile/` (served by api-server) |
+| `artifacts/api-server` | Express API + Socket.io | `/api/*`, `/admin-dashboard/*`, `/mobile/*` |
 | `artifacts/admin-dashboard` | React/Vite (build-only) | Built to `dist/public/`, served by api-server |
 
 ## Stack
@@ -44,7 +44,8 @@ pnpm workspace monorepo using TypeScript with an Expo mobile app and a Node.js A
 - Tow request flow: select tow type (Flatbed/Hook & Chain/Repair) → confirm → real-time socket events
 - Payment: MTN MoMo, Telecel Cash, AT Money, Cash
 - Real-time via Socket.io: user joins room, driver accepts → `request:accepted`, trip complete → `request:completed`
-- **Live tracking**: active-request screen shows full-screen map with user pin + approaching driver truck marker; route line drawn between them (Google Directions on web, polyline on native)
+- **Live tracking**: `/active-request` screen shows full-screen map with user pin + approaching driver truck marker; ETA + distance counters update in real-time. Trips tab also shows an orange "Track Driver" banner when a trip is active.
+- **Active trip banner**: Trips tab (`/(tabs)/trips`) shows a pulsing orange banner with live GPS status and a "Track" button that opens `/active-request` whenever `towStatus === "accepted" | "in_progress"`
 - **Driver GPS emission**: DriverContext emits `driver:location` via socket on every native GPS update (3s interval); on web, simulates smooth exponential movement toward pickup after accepting
 - **Stale closure fix**: TowContext uses refs for `towStatus` / `activeRequest` so socket callbacks always read current state
 - Trips history screen using generated React Query hooks
@@ -76,9 +77,11 @@ Then restart the api-server workflow to reload the files.
 
 ## Architecture Notes
 
-- Socket.io mounts at default path; the reverse proxy maps `/api` → api-server port 8080
-- Admin dashboard static files served by Express at `/admin-dashboard/` (port 8080)
-- Mobile socket connects to `https://${EXPO_PUBLIC_DOMAIN}` with `path: "/api/socket.io"`
+- **Single workflow**: API server runs on port 5000 (webview), serves mobile web + admin + API from the same origin
+- Root `/` redirects to `/mobile/` for the Replit webview preview
+- Admin dashboard still accessible at `/admin-dashboard/`
+- Mobile socket connects to `window.location.origin` on web (same origin, port 5000), `https://${EXPO_PUBLIC_DOMAIN}` on native
+- All API calls in mobile use `getApiBase()` from `utils/apiUrl.ts` (returns `window.location.origin` on web)
 - `MapComponent.native.tsx` / `MapComponent.web.tsx` — platform-specific map rendering
 - `MapComponent.tsx` — TypeScript resolution shim (re-exports web version)
 - Auth context uses `expo-secure-store` on native, `localStorage` on web

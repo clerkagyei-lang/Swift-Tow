@@ -18,6 +18,7 @@ import { useColors } from "@/hooks/useColors";
 import MapComponent from "@/components/MapComponent";
 import LocationSearchInput, { type SelectedLocation } from "@/components/LocationSearchInput";
 import { haversineKm, computeFare } from "@/context/DriverContext";
+import { getApiBase } from "@/utils/apiUrl";
 
 type TowType = "flatbed" | "hook_chain" | "repair";
 
@@ -116,8 +117,7 @@ export default function HomeScreen() {
     setIsSearching(true);
 
     try {
-      const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "localhost";
-      const res = await fetch(`https://${domain}/api/tow-requests`, {
+      const res = await fetch(`${getApiBase()}/api/tow-requests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

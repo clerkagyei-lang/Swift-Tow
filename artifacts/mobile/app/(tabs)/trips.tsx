@@ -10,7 +10,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import { useAuth } from "@/context/AuthContext";
+import { useTow } from "@/context/TowContext";
 import { useListTrips } from "@workspace/api-client-react";
 import { useColors } from "@/hooks/useColors";
 
@@ -36,7 +38,10 @@ function formatDate(dateStr: string) {
 export default function TripsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { user } = useAuth();
+  const { towStatus, activeRequest, driverLocation } = useTow();
+  const isActiveTrip = towStatus === "accepted" || towStatus === "in_progress";
   const { data: trips, isLoading, refetch } = useListTrips(
     { userId: user?.id ?? "" },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -108,6 +113,29 @@ export default function TripsScreen() {
         </Pressable>
       </View>
 
+      {isActiveTrip && (
+        <Pressable
+          style={[styles.activeTrackBanner, { borderColor: colors.primary }]}
+          onPress={() => router.push("/active-request")}
+        >
+          <View style={styles.activeTrackLeft}>
+            <View style={[styles.activeDot, { backgroundColor: colors.primary }]} />
+            <View>
+              <Text style={[styles.activeTrackTitle, { color: colors.primary }]}>
+                {towStatus === "in_progress" ? "Driver En Route" : "Driver Assigned"}
+              </Text>
+              <Text style={[styles.activeTrackSub, { color: colors.mutedForeground }]}>
+                {driverLocation ? "Live GPS tracking active" : activeRequest?.pickupAddress ?? "Tap to track your driver"}
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.trackBtn, { backgroundColor: colors.primary }]}>
+            <MaterialCommunityIcons name="truck-fast" size={16} color="#fff" />
+            <Text style={styles.trackBtnText}>Track</Text>
+          </View>
+        </Pressable>
+      )}
+
       {isLoading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -140,6 +168,30 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     emptyTitle: { fontSize: 18, fontWeight: "700" as const, color: colors.text },
     emptyText: { fontSize: 14, color: colors.mutedForeground, textAlign: "center", paddingHorizontal: 32 },
     list: { padding: 16, gap: 12 },
+    activeTrackBanner: {
+      marginHorizontal: 16,
+      marginBottom: 12,
+      backgroundColor: colors.accent,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      padding: 14,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    activeTrackLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+    activeDot: { width: 10, height: 10, borderRadius: 5 },
+    activeTrackTitle: { fontSize: 14, fontWeight: "700" as const },
+    activeTrackSub: { fontSize: 12, marginTop: 2 },
+    trackBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 10,
+    },
+    trackBtnText: { color: "#fff", fontWeight: "700" as const, fontSize: 13 },
     card: { backgroundColor: colors.card, borderRadius: 16, padding: 16, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
     cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
     typeBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },

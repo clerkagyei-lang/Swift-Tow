@@ -1,11 +1,21 @@
 ---
-name: Workflow port configuration
-description: Which ports each workflow uses and why.
+name: Workflow port config
+description: Which ports and workflow names are used for each service in this Replit project
 ---
 
-## Ports
-- **API Server**: port 8080, outputType `console`. Command: `pnpm install && PORT=8080 pnpm --filter @workspace/api-server run dev`
-- **Swift Tow Mobile**: port 5000, outputType `webview`. Expo dev server must use port 5000 because Replit's webview outputType requires port 5000.
-- **Admin dashboard**: built statically to `artifacts/admin-dashboard/dist/public/` and served by Express at `/admin-dashboard/`. Not its own workflow. Rebuild command: `PORT=8081 BASE_PATH=/admin-dashboard/ pnpm --filter @workspace/admin-dashboard run build`
+## Rule
+Single workflow called "Swift Tow API + Mobile" runs on PORT=5000 (outputType: webview).
 
-**Why:** Replit enforces that webview workflows use port 5000. The original port (18115) caused workflow configuration errors.
+Command: `PORT=5000 pnpm --filter @workspace/api-server run start`
+
+**Why:** Previously two separate workflows (API on 8080, mobile Expo dev on 5000). This caused network errors on login because the mobile web (served by Expo on port 5000) called `window.location.origin + '/api/...'` which hit Expo's dev server, not the API. Solution: API server serves the pre-built mobile web directly, so mobile+API share the same origin.
+
+## Port mapping in .replit
+- Port 5000 → external 80 (main webview — mobile app at /mobile/ and admin at /admin-dashboard/)
+- Port 8080 → external 8080 (unused in dev, kept for reference)
+
+## URL routing (app.ts)
+- `/` → 301 redirect to `/mobile/`
+- `/mobile/*` → serves `artifacts/mobile/dist-web/` static files
+- `/admin-dashboard/*` → serves `artifacts/admin-dashboard/dist/public/` static files
+- `/api/*` → Express API routes

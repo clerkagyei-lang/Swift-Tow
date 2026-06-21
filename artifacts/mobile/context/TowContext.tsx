@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import { io, Socket } from "socket.io-client";
+import { getApiBase } from "@/utils/apiUrl";
 
 export type TowStatus = "idle" | "searching" | "accepted" | "in_progress" | "completed";
 
@@ -95,7 +96,7 @@ export function TowProvider({ userId, children }: { userId: string | null; child
     const req = activeRequestRef.current;
     if (req) {
       try {
-        await fetch(`https://${API_DOMAIN}/api/tow-requests/${req.id}`, {
+        await fetch(`${getApiBase()}/api/tow-requests/${req.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "cancelled" }),

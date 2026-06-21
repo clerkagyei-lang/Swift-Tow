@@ -37,9 +37,9 @@ app.use(cookieParser());
 
 app.use('/api', router);
 
-// Redirect root to admin dashboard
+// Redirect root to mobile web app
 app.get('/', (_req, res) => {
-  res.redirect(301, '/admin-dashboard/');
+  res.redirect(301, '/mobile/');
 });
 
 const adminDistPath = path.resolve(
