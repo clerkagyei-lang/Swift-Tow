@@ -40,13 +40,13 @@ outputType = "webview"
 name = "Expo Dev Server"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "PORT=8080 EXPO_PACKAGER_PROXY_URL=https://$REPLIT_EXPO_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN pnpm --filter @workspace/mobile run dev"
-waitForPort = 8080
-
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_REPL_ID=$REPL_ID pnpm --filter @workspace/mobile exec expo start --tunnel --port 8080"
+waitForPort = 8080
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
@@ -61,8 +61,8 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 8081
-externalPort = 8081
+localPort = 8080
+externalPort = 8080
 
 [[ports]]
 localPort = 8082
@@ -79,10 +79,6 @@ externalPort = 3001
 [[ports]]
 localPort = 22134
 externalPort = 3002
-
-[[ports]]
-localPort = 8080
-externalPort = 8080
 
 [nix]
 channel = "stable-25_05"
