@@ -59,8 +59,32 @@ export default function HomeScreen() {
 
     (async () => {
       if (Platform.OS === "web") {
-        setPickupLocation(ACCRA);
-        setPickupAddress("Accra, Greater Accra Region, Ghana");
+        if (typeof navigator !== "undefined" && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+              const lat = pos.coords.latitude;
+              const lng = pos.coords.longitude;
+              setPickupLocation({ latitude: lat, longitude: lng });
+              try {
+                const res = await fetch(
+                  `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
+                );
+                const data = await res.json();
+                setPickupAddress(data.display_name ?? `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+              } catch {
+                setPickupAddress(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+              }
+            },
+            () => {
+              setPickupLocation(ACCRA);
+              setPickupAddress("Accra, Greater Accra Region, Ghana");
+            },
+            { enableHighAccuracy: true, timeout: 8000 }
+          );
+        } else {
+          setPickupLocation(ACCRA);
+          setPickupAddress("Accra, Greater Accra Region, Ghana");
+        }
         return;
       }
 

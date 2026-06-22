@@ -47,6 +47,7 @@ export default function MapComponent({ location, dropoffLocation, driverLocation
   const driverMarkerRef = useRef<any>(null);
   const dropoffMarkerRef = useRef<any>(null);
   const routeLineRef = useRef<any>(null);
+  const driverRouteLineRef = useRef<any>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -167,7 +168,20 @@ export default function MapComponent({ location, dropoffLocation, driverLocation
       driverMarkerRef.current = L.marker([dl.latitude, dl.longitude], { icon: driverIcon }).addTo(map);
     }
 
+    // Draw / update live route line from driver to user pickup
     if (ul) {
+      if (driverRouteLineRef.current) {
+        driverRouteLineRef.current.setLatLngs([
+          [dl.latitude, dl.longitude],
+          [ul.latitude, ul.longitude],
+        ]);
+      } else {
+        driverRouteLineRef.current = L.polyline(
+          [[dl.latitude, dl.longitude], [ul.latitude, ul.longitude]],
+          { color: colors.primary, weight: 4, opacity: 0.75, dashArray: "10 7" }
+        ).addTo(map);
+      }
+
       const bounds = L.latLngBounds([
         [ul.latitude, ul.longitude],
         [dl.latitude, dl.longitude],
@@ -218,9 +232,15 @@ export default function MapComponent({ location, dropoffLocation, driverLocation
 
     if (driverLocation) {
       addOrMoveDriver(L, map, driverLocation, location);
-    } else if (driverMarkerRef.current) {
-      map.removeLayer(driverMarkerRef.current);
-      driverMarkerRef.current = null;
+    } else {
+      if (driverMarkerRef.current) {
+        map.removeLayer(driverMarkerRef.current);
+        driverMarkerRef.current = null;
+      }
+      if (driverRouteLineRef.current) {
+        map.removeLayer(driverRouteLineRef.current);
+        driverRouteLineRef.current = null;
+      }
       if (location) map.panTo([location.latitude, location.longitude], { animate: true });
     }
   }, [driverLocation]);

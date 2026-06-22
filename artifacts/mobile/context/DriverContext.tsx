@@ -161,23 +161,22 @@ export function DriverProvider({
       socketRef.current?.emit("driver:location", { driverId, location: currentLoc });
 
       webIntervalRef.current = setInterval(() => {
+        if (!isOnlineRef.current) return;
         const trip = activeTripRef.current;
         if (trip?.pickupLocation) {
-          // Smoothly approach pickup location (exponential ease)
+          // Only move when there's an active trip — smoothly approach pickup
           currentLoc = {
             latitude: currentLoc.latitude + (trip.pickupLocation.latitude - currentLoc.latitude) * 0.12,
             longitude: currentLoc.longitude + (trip.pickupLocation.longitude - currentLoc.longitude) * 0.12,
           };
-        } else {
-          // Gentle jitter while waiting for a job
-          currentLoc = {
-            latitude: currentLoc.latitude + (Math.random() - 0.5) * 0.0008,
-            longitude: currentLoc.longitude + (Math.random() - 0.5) * 0.0008,
-          };
+          const loc = { latitude: currentLoc.latitude, longitude: currentLoc.longitude };
+          setDriverLocation(loc);
+          socketRef.current?.emit("driver:location", { driverId, location: loc });
         }
-        const loc = { latitude: currentLoc.latitude, longitude: currentLoc.longitude };
-        setDriverLocation(loc);
-        socketRef.current?.emit("driver:location", { driverId, location: loc });
+        // When idle (no active trip), stay put — just re-emit position for presence
+        else {
+          socketRef.current?.emit("driver:location", { driverId, location: currentLoc });
+        }
       }, 3000);
       return;
     }
