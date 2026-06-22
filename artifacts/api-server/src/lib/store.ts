@@ -338,6 +338,18 @@ export const store = {
       .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime());
   },
 
+  async getTripsByDriver(driverId: string): Promise<Trip[]> {
+    if (db) {
+      const rows = await db.select().from(tripsTable)
+        .where(eq(tripsTable.driverId, driverId))
+        .orderBy(desc(tripsTable.completedAt));
+      return rows as unknown as Trip[];
+    }
+    return Array.from(memTrips.values())
+      .filter((t) => t.driverId === driverId)
+      .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime());
+  },
+
   async getTripById(id: string): Promise<Trip | undefined> {
     if (db) {
       const rows = await db.select().from(tripsTable).where(eq(tripsTable.id, id)).limit(1);

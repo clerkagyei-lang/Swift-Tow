@@ -102,13 +102,16 @@ export function DriverProvider({
   const [earningsToday, setEarningsToday] = useState(0);
   const socketRef = useRef<Socket | null>(null);
   const locationSubRef = useRef<Location.LocationSubscription | null>(null);
+  const webIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Refs so socket callbacks always read the latest values (avoid stale closures)
   const isOnlineRef = useRef(false);
   const tripStatusRef = useRef<TripStatus>("idle");
+  const activeTripRef = useRef<ActiveTrip | null>(null);
 
   useEffect(() => { isOnlineRef.current = isOnline; }, [isOnline]);
   useEffect(() => { tripStatusRef.current = tripStatus; }, [tripStatus]);
+  useEffect(() => { activeTripRef.current = activeTrip; }, [activeTrip]);
 
   useEffect(() => {
     if (!driverId) return;
@@ -137,6 +140,8 @@ export function DriverProvider({
           towType: req.towType,
           pickupLocation: req.pickupLocation,
           pickupAddress: req.pickupAddress,
+          dropoffLocation: req.dropoffLocation ?? null,
+          dropoffAddress: req.dropoffAddress ?? null,
           vehicleDetails: req.vehicleDetails,
           estimatedAmount: TOW_ESTIMATED_AMOUNTS[req.towType] ?? 200,
         });
@@ -151,8 +156,29 @@ export function DriverProvider({
 
   const startLocationTracking = useCallback(async () => {
     if (Platform.OS === "web") {
-      const loc = { latitude: 5.614818, longitude: -0.205874 };
-      setDriverLocation(loc);
+      let currentLoc = { latitude: 5.614818, longitude: -0.205874 };
+      setDriverLocation(currentLoc);
+      socketRef.current?.emit("driver:location", { driverId, location: currentLoc });
+
+      webIntervalRef.current = setInterval(() => {
+        const trip = activeTripRef.current;
+        if (trip?.pickupLocation) {
+          // Smoothly approach pickup location (exponential ease)
+          currentLoc = {
+            latitude: currentLoc.latitude + (trip.pickupLocation.latitude - currentLoc.latitude) * 0.12,
+            longitude: currentLoc.longitude + (trip.pickupLocation.longitude - currentLoc.longitude) * 0.12,
+          };
+        } else {
+          // Gentle jitter while waiting for a job
+          currentLoc = {
+            latitude: currentLoc.latitude + (Math.random() - 0.5) * 0.0008,
+            longitude: currentLoc.longitude + (Math.random() - 0.5) * 0.0008,
+          };
+        }
+        const loc = { latitude: currentLoc.latitude, longitude: currentLoc.longitude };
+        setDriverLocation(loc);
+        socketRef.current?.emit("driver:location", { driverId, location: loc });
+      }, 3000);
       return;
     }
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -175,6 +201,10 @@ export function DriverProvider({
   const stopLocationTracking = useCallback(() => {
     locationSubRef.current?.remove();
     locationSubRef.current = null;
+    if (webIntervalRef.current) {
+      clearInterval(webIntervalRef.current);
+      webIntervalRef.current = null;
+    }
   }, []);
 
   const setOnline = useCallback(async (online: boolean) => {
