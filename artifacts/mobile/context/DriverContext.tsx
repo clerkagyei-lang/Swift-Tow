@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { Platform } from "react-native";
 import { io, Socket } from "socket.io-client";
 import * as Location from "expo-location";
+import { getApiBase } from "@/utils/apiUrl";
 
 export interface IncomingRequest {
   id: string;
@@ -214,7 +215,7 @@ export function DriverProvider({
       stopLocationTracking();
     }
     try {
-      await fetch(`https://${API_DOMAIN}/api/drivers/${driverId}/status`, {
+      await fetch(`${getApiBase()}/api/drivers/${driverId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isOnline: online, currentLocation: driverLocation }),

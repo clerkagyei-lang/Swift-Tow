@@ -358,18 +358,20 @@ export const store = {
     return memTrips.get(id);
   },
 
-  async markPaymentPaid(tripId: string, method: Trip["paymentMethod"]): Promise<Trip | null> {
+  async markPaymentPaid(towRequestId: string, method: Trip["paymentMethod"]): Promise<Trip | null> {
     if (db) {
       const rows = await db.update(tripsTable)
         .set({ paymentStatus: "paid", paymentMethod: method })
-        .where(eq(tripsTable.id, tripId))
+        .where(eq(tripsTable.towRequestId, towRequestId))
         .returning();
       return (rows[0] as unknown as Trip) ?? null;
     }
-    const trip = memTrips.get(tripId);
+    const trip = Array.from(memTrips.values()).find(
+      (t) => t.towRequestId === towRequestId
+    );
     if (!trip) return null;
     const updated = { ...trip, paymentStatus: "paid" as const, paymentMethod: method };
-    memTrips.set(tripId, updated);
+    memTrips.set(trip.id, updated);
     return updated;
   },
 

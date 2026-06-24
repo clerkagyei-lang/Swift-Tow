@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTow } from "@/context/TowContext";
 import { useAuth } from "@/context/AuthContext";
 import { useColors } from "@/hooks/useColors";
+import { getApiBase } from "@/utils/apiUrl";
 
 type PaymentMethod = "mtn_momo" | "telecel_cash" | "at_money" | "cash";
 
@@ -43,8 +44,7 @@ export default function PaymentScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setIsLoading(true);
     try {
-      const domain = process.env.EXPO_PUBLIC_DOMAIN ?? "localhost";
-      await fetch(`https://${domain}/api/payments`, {
+      const res = await fetch(`${getApiBase()}/api/payments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -54,6 +54,7 @@ export default function PaymentScreen() {
           phoneNumber: selectedMethod !== "cash" ? momoPhone : null,
         }),
       });
+      if (!res.ok) throw new Error("Payment failed");
       setPaid(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setTimeout(() => {
