@@ -86,6 +86,15 @@ export function initSocket(httpServer: HttpServer): SocketIOServer {
       }
     });
 
+    socket.on("request:start", async ({ requestId }: { requestId: string }) => {
+      const req = await store.updateTowRequest(requestId, { status: "in_progress" });
+      if (req) {
+        io?.to(`user:${req.userId}`).emit("request:started", req);
+        io?.emit("request:status:update", req);
+        logger.info({ requestId }, "Trip started — driver en route");
+      }
+    });
+
     socket.on("request:complete", async ({ requestId }: { requestId: string }) => {
       const req = await store.getTowRequestById(requestId);
       if (!req || !req.driverId) return;

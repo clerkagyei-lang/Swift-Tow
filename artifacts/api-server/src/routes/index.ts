@@ -5,6 +5,7 @@ import towRequestsRouter from "./tow-requests";
 import driversRouter from "./drivers";
 import tripsRouter from "./trips";
 import paymentsRouter from "./payments";
+import paystackRouter from "./paystack";
 import statsRouter from "./stats";
 import adminRouter from "./admin";
 
@@ -16,6 +17,7 @@ router.use(towRequestsRouter);
 router.use(driversRouter);
 router.use(tripsRouter);
 router.use(paymentsRouter);
+router.use(paystackRouter);
 router.use(statsRouter);
 router.use(adminRouter);
 

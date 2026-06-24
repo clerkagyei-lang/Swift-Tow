@@ -80,6 +80,11 @@ export function TowProvider({ userId, children }: { userId: string | null; child
       }
     });
 
+    socket.on("request:started", (req: TowRequest) => {
+      setActiveRequest(req);
+      setTowStatus("in_progress");
+    });
+
     socket.on("request:completed", ({ requestId, amount }: { requestId: string; amount: number }) => {
       setTowStatus("completed");
       setPendingPayment({ requestId, amount });

@@ -43,6 +43,7 @@ interface DriverContextType {
   earningsToday: number;
   acceptRequest: (requestId: string) => void;
   declineRequest: () => void;
+  startTrip: () => void;
   completeTrip: () => void;
   socket: Socket | null;
 }
@@ -246,6 +247,12 @@ export function DriverProvider({
     setIncomingRequest(null);
   }, []);
 
+  const startTrip = useCallback(() => {
+    if (!activeTrip) return;
+    socketRef.current?.emit("request:start", { requestId: activeTrip.requestId });
+    setTripStatus("in_progress");
+  }, [activeTrip]);
+
   const completeTrip = useCallback(() => {
     if (!activeTrip) return;
     const dropoff = activeTrip.dropoffLocation ?? driverLocation ?? activeTrip.pickupLocation;
@@ -271,6 +278,7 @@ export function DriverProvider({
         earningsToday,
         acceptRequest,
         declineRequest,
+        startTrip,
         completeTrip,
         socket: socketRef.current,
       }}

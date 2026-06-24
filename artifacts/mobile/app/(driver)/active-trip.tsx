@@ -27,8 +27,9 @@ const TAB_BAR_HEIGHT = 80;
 export default function ActiveTripScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { activeTrip, tripStatus, completeTrip, driverLocation } = useDriver();
+  const { activeTrip, tripStatus, startTrip, completeTrip, driverLocation } = useDriver();
   const mapRef = useRef<any>(null);
+  const [isStarting, setIsStarting] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
 
   const bottomPad = insets.bottom + TAB_BAR_HEIGHT;
@@ -78,6 +79,15 @@ export default function ActiveTripScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
+  const handleStartTrip = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setIsStarting(true);
+    setTimeout(() => {
+      startTrip();
+      setIsStarting(false);
+    }, 500);
+  };
+
   const handleComplete = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setIsCompleting(true);
@@ -86,6 +96,8 @@ export default function ActiveTripScreen() {
       setIsCompleting(false);
     }, 800);
   };
+
+  const isAccepted = tripStatus === "accepted";
 
   return (
     <View style={styles.container}>
@@ -97,10 +109,10 @@ export default function ActiveTripScreen() {
       />
 
       <View style={[styles.topBadge, { top: insets.top + (Platform.OS === "web" ? 67 : 16) }]}>
-        <View style={styles.topBadgeInner}>
+        <View style={[styles.topBadgeInner, { backgroundColor: isAccepted ? colors.secondary : colors.primary }]}>
           <View style={styles.pulseDot} />
           <Text style={styles.topBadgeText}>
-            {tripStatus === "accepted" ? "Heading to Pickup" : "Trip in Progress"}
+            {isAccepted ? "Heading to Pickup" : "Trip in Progress"}
           </Text>
         </View>
       </View>
@@ -165,22 +177,43 @@ export default function ActiveTripScreen() {
             </View>
           </View>
 
-          <View style={styles.completeCard}>
-            <Pressable
-              style={({ pressed }) => [styles.completeBtn, pressed && { opacity: 0.88 }]}
-              onPress={handleComplete}
-              disabled={isCompleting}
-            >
-              {isCompleting ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <>
-                  <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                  <Text style={styles.completeBtnText}>Complete Trip · GHS {fare.toFixed(2)}</Text>
-                </>
-              )}
-            </Pressable>
-          </View>
+          {isAccepted ? (
+            <View style={styles.actionCard}>
+              <Text style={styles.actionHint}>Arrived at pickup? Tap to begin the tow.</Text>
+              <Pressable
+                style={({ pressed }) => [styles.startBtn, pressed && { opacity: 0.88 }]}
+                onPress={handleStartTrip}
+                disabled={isStarting}
+              >
+                {isStarting ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="navigate" size={20} color="#fff" />
+                    <Text style={styles.startBtnText}>Start Trip</Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.actionCard}>
+              <Text style={styles.actionHint}>Reached the destination? Tap to complete.</Text>
+              <Pressable
+                style={({ pressed }) => [styles.completeBtn, pressed && { opacity: 0.88 }]}
+                onPress={handleComplete}
+                disabled={isCompleting}
+              >
+                {isCompleting ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                    <Text style={styles.completeBtnText}>Complete Trip · GHS {fare.toFixed(2)}</Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          )}
         </ScrollView>
       </View>
     </View>
@@ -213,13 +246,12 @@ function makeStyles(colors: ReturnType<typeof useColors>, bottomPad: number) {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      backgroundColor: colors.secondary,
       borderRadius: 14,
       paddingHorizontal: 16,
       paddingVertical: 10,
       alignSelf: "flex-start",
     },
-    pulseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.primary },
+    pulseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#FFFFFF" },
     topBadgeText: { color: "#FFFFFF", fontWeight: "600" as const, fontSize: 13 },
     bottomPanel: {
       position: "absolute",
@@ -303,9 +335,18 @@ function makeStyles(colors: ReturnType<typeof useColors>, bottomPad: number) {
     fareLabel: { fontSize: 12, color: "rgba(255,255,255,0.65)", marginBottom: 4 },
     fareDistance: { fontSize: 13, color: "rgba(255,255,255,0.8)" },
     fareAmount: { fontSize: 32, fontWeight: "700" as const, color: "#FFFFFF" },
-    completeCard: {
-      marginBottom: 8,
+    actionCard: { marginBottom: 8, gap: 10 },
+    actionHint: { fontSize: 13, color: colors.mutedForeground, textAlign: "center" },
+    startBtn: {
+      backgroundColor: colors.primary,
+      borderRadius: 14,
+      height: 52,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
     },
+    startBtnText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" as const },
     completeBtn: {
       backgroundColor: colors.success,
       borderRadius: 14,
